@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: business-intelligence-agent
+Version: 0.1.0
+Summary: Agente de inteligencia de negocios com LangChain
+Requires-Python: <3.13,>=3.12

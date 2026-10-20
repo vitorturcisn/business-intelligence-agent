@@ -1,0 +1,12 @@
+langchain
+langchain-classic
+langchain-openai
+langchain-community
+langchain-text-splitters
+langsmith
+faiss-cpu
+python-dotenv
+pandas
+requests
+pydantic
+pytest
