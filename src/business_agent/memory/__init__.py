@@ -1,0 +1,1 @@
+"""Componentes de memória do Business Intelligence Agent."""
