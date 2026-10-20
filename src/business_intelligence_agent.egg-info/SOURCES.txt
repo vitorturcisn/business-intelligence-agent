@@ -1,7 +1,0 @@
-README.md
-pyproject.toml
-src/business_agent/__init__.py
-src/business_intelligence_agent.egg-info/PKG-INFO
-src/business_intelligence_agent.egg-info/SOURCES.txt
-src/business_intelligence_agent.egg-info/dependency_links.txt
-src/business_intelligence_agent.egg-info/top_level.txt
