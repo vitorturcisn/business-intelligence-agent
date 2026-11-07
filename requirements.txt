@@ -10,3 +10,4 @@ pandas
 requests
 pydantic
 pytest
+langchain-huggingface[full]
