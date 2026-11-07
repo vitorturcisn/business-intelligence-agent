@@ -1,4 +1,5 @@
-﻿import re
+from pydantic import PrivateAttr
+import re
 import unicodedata
 import uuid
 from typing import Any
@@ -25,6 +26,7 @@ def normalize(text: str) -> str:
 
 
 class RoutingEvaluationMockModel(FakeMessagesListChatModel):
+    _available_tools: set[str] = PrivateAttr(default_factory=set)
     """
     Modelo determinístico para avaliação de tool calling.
 
@@ -39,7 +41,7 @@ class RoutingEvaluationMockModel(FakeMessagesListChatModel):
     """
 
     def bind_tools(self, tools: Any, **kwargs: Any):
-        self.available_tools = {item.name for item in tools}
+        self._available_tools = {item.name for item in tools}
         return self
 
     def _generate(
@@ -91,12 +93,41 @@ class RoutingEvaluationMockModel(FakeMessagesListChatModel):
                 question,
             )
 
-            month = month_match.group(0) if month_match else "2026-09"
+            month_names = {
+                "janeiro": "01",
+                "fevereiro": "02",
+                "marco": "03",
+                "abril": "04",
+                "maio": "05",
+                "junho": "06",
+                "julho": "07",
+                "agosto": "08",
+                "setembro": "09",
+                "outubro": "10",
+                "novembro": "11",
+                "dezembro": "12",
+            }
+
+            portuguese_month_match = re.search(
+                r"\b(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+(?:de\s+)?(20\d{2})\b",
+                normalized,
+            )
+
+            if month_match:
+                month = month_match.group(0)
+            elif portuguese_month_match:
+                month_match = portuguese_month_match
+                month = (
+                    f"{portuguese_month_match.group(2)}-"
+                    f"{month_names[portuguese_month_match.group(1)]}"
+                )
+            else:
+                month = "2026-09"
 
             calls = []
 
             def add_call(name: str, args: dict):
-                if name not in self.available_tools:
+                if name not in self._available_tools:
                     raise RuntimeError(
                         f"Ferramenta de avaliação não encontrada: {name}"
                     )
@@ -123,14 +154,14 @@ class RoutingEvaluationMockModel(FakeMessagesListChatModel):
                 )
 
             else:
-                wants_sales = any(
+                wants_sales = bool(month_match) or any(
                     term in normalized
                     for term in [
-                        "setembro",
                         "vendas",
                         "faturamento",
-                        "receita",
                         "pedidos",
+                        "quanto vendeu",
+                        "valor vendido",
                     ]
                 )
 
@@ -174,3 +205,6 @@ class RoutingEvaluationMockModel(FakeMessagesListChatModel):
                 ChatGeneration(message=response)
             ]
         )
+
+
+

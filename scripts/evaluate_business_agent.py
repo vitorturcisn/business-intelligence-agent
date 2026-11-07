@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import json
 import uuid
 from pathlib import Path
@@ -22,7 +22,7 @@ from business_agent.observability.langsmith_config import (
 )
 
 
-DATASET_NAME = "business-intelligence-agent-evaluation-v1"
+DATASET_NAME = "business-intelligence-agent-evaluation-v2"
 
 
 EVALUATION_EXAMPLES = [
@@ -149,13 +149,56 @@ def target(inputs: dict) -> dict:
     }
 
 
+
+def _resolve_reference_outputs(
+    reference_outputs=None,
+    example=None,
+) -> dict:
+    candidate = reference_outputs
+
+    if (
+        isinstance(candidate, dict)
+        and isinstance(candidate.get("reference_outputs"), dict)
+    ):
+        candidate = candidate["reference_outputs"]
+
+    required = {"expected_tools", "required_terms"}
+
+    if not isinstance(candidate, dict) or not required.issubset(candidate):
+        candidate = getattr(example, "outputs", None) if example else None
+
+    if (
+        isinstance(candidate, dict)
+        and isinstance(candidate.get("reference_outputs"), dict)
+    ):
+        candidate = candidate["reference_outputs"]
+
+    if not isinstance(candidate, dict) or not required.issubset(candidate):
+        available = (
+            sorted(candidate.keys())
+            if isinstance(candidate, dict)
+            else type(candidate).__name__
+        )
+        raise ValueError(
+            "Gabarito do LangSmith ausente ou incompleto. "
+            f"Campos encontrados: {available}"
+        )
+
+    return candidate
+
+
 def trajectory_evaluator(
     outputs: dict,
-    reference_outputs: dict,
+    reference_outputs: dict | None = None,
+    example=None,
 ) -> dict:
-    expected = set(reference_outputs["expected_tools"])
-    actual = set(outputs.get("tool_names", []))
+    reference = _resolve_reference_outputs(
+        reference_outputs,
+        example,
+    )
 
+    expected = set(reference["expected_tools"])
+    actual = set(outputs.get("tool_names", []))
     score = expected == actual
 
     return {
@@ -169,11 +212,16 @@ def trajectory_evaluator(
 
 def answer_coverage_evaluator(
     outputs: dict,
-    reference_outputs: dict,
+    reference_outputs: dict | None = None,
+    example=None,
 ) -> dict:
-    answer = outputs.get("answer", "").casefold()
+    reference = _resolve_reference_outputs(
+        reference_outputs,
+        example,
+    )
 
-    required_terms = reference_outputs.get("required_terms", [])
+    answer = outputs.get("answer", "").casefold()
+    required_terms = reference["required_terms"]
 
     missing = [
         term for term in required_terms
@@ -266,12 +314,13 @@ def run_local_evaluation():
     return summary
 
 
+
 def upload_to_langsmith():
     status = get_langsmith_status()
 
     if not status.api_key_set:
         raise RuntimeError(
-            "LANGSMITH_API_KEY não configurada no .env."
+            "LANGSMITH_API_KEY n?o configurada no .env."
         )
 
     client = Client()
@@ -279,12 +328,11 @@ def upload_to_langsmith():
     try:
         dataset = client.read_dataset(dataset_name=DATASET_NAME)
         print(f"Dataset existente encontrado: {DATASET_NAME}")
-
     except Exception:
         dataset = client.create_dataset(
             dataset_name=DATASET_NAME,
             description=(
-                "Avaliação de trajetória e cobertura de respostas "
+                "Avalia??o de trajet?ria e cobertura de respostas "
                 "do Business Intelligence Agent."
             ),
         )
@@ -300,19 +348,67 @@ def upload_to_langsmith():
     }
 
     new_examples = [
-        example
-        for example in EVALUATION_EXAMPLES
-        if example["inputs"]["question"] not in existing_questions
+        item
+        for item in EVALUATION_EXAMPLES
+        if item["inputs"]["question"] not in existing_questions
     ]
 
     if new_examples:
         client.create_examples(
             dataset_id=dataset.id,
-            examples=new_examples,
+            inputs=[
+                item["inputs"]
+                for item in new_examples
+            ],
+            outputs=[
+                item["reference_outputs"]
+                for item in new_examples
+            ],
+            metadata=[
+                item["metadata"]
+                for item in new_examples
+            ],
         )
         print(f"Novos exemplos enviados: {len(new_examples)}")
     else:
-        print("Os exemplos já existem no dataset.")
+        print("Os exemplos j? existem no dataset.")
+
+    # L? novamente o dataset para validar o que foi persistido.
+    saved_examples = list(
+        client.list_examples(dataset_id=dataset.id)
+    )
+
+    saved_by_question = {
+        example.inputs.get("question"): example
+        for example in saved_examples
+    }
+
+    invalid_examples = []
+
+    for item in EVALUATION_EXAMPLES:
+        question = item["inputs"]["question"]
+        saved = saved_by_question.get(question)
+        stored_outputs = getattr(saved, "outputs", None) if saved else None
+
+        if (
+            not isinstance(stored_outputs, dict)
+            or not {
+                "expected_tools",
+                "required_terms",
+            }.issubset(stored_outputs)
+        ):
+            invalid_examples.append(question)
+
+    if invalid_examples:
+        raise RuntimeError(
+            "O dataset n?o armazenou corretamente os gabaritos: "
+            f"{invalid_examples}"
+        )
+
+    print(
+        f"Dataset validado: {len(saved_examples)} exemplos "
+        "com gabaritos completos."
+    )
 
     print("\nEXECUTANDO EXPERIMENTO REMOTO...")
 
@@ -325,8 +421,8 @@ def upload_to_langsmith():
         ],
         experiment_prefix="business-agent-mock-evaluation",
         description=(
-            "Avaliação de tool trajectory e answer coverage. "
-            "O modelo utilizado é determinístico e simulado."
+            "Avalia??o de tool trajectory e answer coverage. "
+            "O modelo utilizado ? determin?stico e simulado."
         ),
         max_concurrency=1,
         metadata={
@@ -340,6 +436,7 @@ def upload_to_langsmith():
 
     if hasattr(client, "flush"):
         client.flush()
+
 
 
 def main():
