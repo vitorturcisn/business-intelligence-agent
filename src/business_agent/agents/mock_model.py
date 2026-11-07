@@ -1,8 +1,6 @@
 ﻿from typing import Any
 
-from langchain_core.language_models.fake_chat_models import (
-    FakeMessagesListChatModel,
-)
+from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -14,12 +12,11 @@ from langchain_core.outputs import ChatGeneration, ChatResult
 
 class FakeSalesToolCallingModel(FakeMessagesListChatModel):
     """
-    Modelo simulado para validar o ciclo de tool calling.
+    Simula o ciclo de tool calling para validar o agente sem API paga.
 
-    Emite uma chamada para sales_monthly_summary e depois
-    produz uma resposta utilizando o resultado da ferramenta.
-
-    Não representa autonomia real de um LLM.
+    Primeiro turno: chama a ferramenta SQL.
+    Após a execução da ferramenta: produz uma resposta.
+    Turnos seguintes: reutiliza o resultado anterior da mesma sessão.
     """
 
     def bind_tools(self, tools: Any, **kwargs: Any):
@@ -44,14 +41,20 @@ class FakeSalesToolCallingModel(FakeMessagesListChatModel):
 
         messages_after_last_user = messages[last_user_index + 1:]
 
-        tool_messages = [
+        recent_tool_messages = [
             message
             for message in messages_after_last_user
             if isinstance(message, ToolMessage)
         ]
 
-        if tool_messages:
-            latest_tool = tool_messages[-1]
+        previous_tool_messages = [
+            message
+            for message in messages[:last_user_index]
+            if isinstance(message, ToolMessage)
+        ]
+
+        if recent_tool_messages:
+            latest_tool = recent_tool_messages[-1]
 
             response = AIMessage(
                 content=(
@@ -59,6 +62,19 @@ class FakeSalesToolCallingModel(FakeMessagesListChatModel):
                     f"Resultado retornado:\n{latest_tool.content}"
                 )
             )
+
+        elif previous_tool_messages:
+            latest_tool = previous_tool_messages[-1]
+
+            response = AIMessage(
+                content=(
+                    "Com base no resultado da consulta anterior, "
+                    "podemos continuar a análise sem repetir a "
+                    "consulta SQL.\n\n"
+                    f"Resultado anterior:\n{latest_tool.content}"
+                )
+            )
+
         else:
             number_of_users = sum(
                 isinstance(message, HumanMessage)
@@ -77,7 +93,5 @@ class FakeSalesToolCallingModel(FakeMessagesListChatModel):
             )
 
         return ChatResult(
-            generations=[
-                ChatGeneration(message=response)
-            ]
+            generations=[ChatGeneration(message=response)]
         )

@@ -1,5 +1,4 @@
 ﻿from langchain_core.messages import AIMessage, ToolMessage
-
 from langgraph.checkpoint.memory import InMemorySaver
 
 from business_agent.agents.orchestrator import build_business_agent
@@ -26,6 +25,8 @@ def main():
         "Agora considere também o contexto da nossa conversa anterior.",
     ]
 
+    previous_message_count = 0
+
     for question in questions:
         print("\n" + "=" * 80)
         print("USUÁRIO:", question)
@@ -36,7 +37,9 @@ def main():
             config=config,
         )
 
-        for message in result["messages"]:
+        new_messages = result["messages"][previous_message_count:]
+
+        for message in new_messages:
             if isinstance(message, AIMessage) and message.tool_calls:
                 for call in message.tool_calls:
                     print(f"\nCHAMADA DE FERRAMENTA: {call['name']}")
@@ -48,10 +51,9 @@ def main():
         print("\nRESPOSTA FINAL:")
         print(result["messages"][-1].content)
 
-        print(
-            "\nMENSAGENS NO HISTÓRICO:",
-            len(result["messages"]),
-        )
+        previous_message_count = len(result["messages"])
+
+        print("\nTOTAL DE MENSAGENS NO HISTÓRICO:", previous_message_count)
 
 
 if __name__ == "__main__":
