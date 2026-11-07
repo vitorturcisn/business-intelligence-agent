@@ -11,3 +11,5 @@ __pycache__/
 build/
 dist/
 data/sample/agent_memory.db
+data/indexes/agent_memory_faiss/
+data/sample/hybrid_memory_demo.db

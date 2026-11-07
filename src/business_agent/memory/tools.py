@@ -1,4 +1,4 @@
-﻿import json
+import json
 from typing import Literal
 
 from langchain_core.tools import tool
@@ -58,7 +58,7 @@ def search_business_memory(
     """
     store = get_memory_store()
 
-    results = store.search_memories(
+    results = store.search_memories_hybrid(
         query=query,
         kind=kind,
         limit=limit,

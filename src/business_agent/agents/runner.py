@@ -1,7 +1,7 @@
-﻿import uuid
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -65,6 +65,7 @@ def run_business_query(
     thread_id: str,
     memory_store: LongTermMemoryStore | None = None,
     persist_episode: bool = False,
+    retrieval_mode: Literal["lexical", "hybrid"] = "lexical",
 ) -> BusinessRunOutcome:
     """
     Executa uma pergunta com recuperação de memória persistente.
@@ -85,10 +86,20 @@ def run_business_query(
 
     store = memory_store or LongTermMemoryStore()
 
-    retrieved_memories = store.search_memories(
-        query=question,
-        limit=3,
-    )
+    if retrieval_mode == "lexical":
+        retrieved_memories = store.search_memories(
+            query=question,
+            limit=3,
+        )
+    elif retrieval_mode == "hybrid":
+        retrieved_memories = store.search_memories_hybrid(
+            query=question,
+            limit=3,
+        )
+    else:
+        raise ValueError(
+            "retrieval_mode deve ser 'lexical' ou 'hybrid'."
+        )
 
     memory_context = _build_memory_context(retrieved_memories)
 

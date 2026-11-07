@@ -240,3 +240,62 @@ class LongTermMemoryStore:
         )
 
         return results
+
+    def list_memories(
+        self,
+        kind: MemoryKind | None = None,
+        limit: int = 10000,
+    ) -> list[dict]:
+        """Lista mem?rias para reconstru??o do ?ndice vetorial."""
+
+        if kind is not None:
+            self._validate_kind(kind)
+
+        if not isinstance(limit, int) or not 1 <= limit <= 10000:
+            raise ValueError("limit deve estar entre 1 e 10000.")
+
+        with self._connect() as connection:
+            if kind is None:
+                rows = connection.execute(
+                    """
+                    SELECT *
+                    FROM long_term_memories
+                    ORDER BY id ASC
+                    LIMIT ?
+                    """,
+                    (limit,),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT *
+                    FROM long_term_memories
+                    WHERE kind = ?
+                    ORDER BY id ASC
+                    LIMIT ?
+                    """,
+                    (kind, limit),
+                ).fetchall()
+
+        return [dict(row) for row in rows]
+
+    def search_memories_hybrid(
+        self,
+        query: str,
+        kind: MemoryKind | None = None,
+        limit: int = 10,
+    ) -> list[dict]:
+        """Combina busca lexical e sem?ntica com FAISS."""
+
+        from business_agent.memory.hybrid_retrieval import (
+            HybridMemoryRetriever,
+        )
+
+        retriever = HybridMemoryRetriever(self)
+
+        return retriever.search_hybrid(
+            query=query,
+            kind=kind,
+            limit=limit,
+        )
+
