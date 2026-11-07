@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from business_agent.memory.long_term import LongTermMemoryStore
 from business_agent.memory.hybrid_retrieval import HybridMemoryRetriever
@@ -31,7 +31,7 @@ def main():
 
     question = (
         "Quanto sobra do valor vendido depois de retirar "
-        "os abatimentos comerciais?"
+        "os abatimentos?"
     )
 
     retriever = HybridMemoryRetriever(store)

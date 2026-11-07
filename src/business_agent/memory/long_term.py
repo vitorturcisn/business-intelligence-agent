@@ -152,11 +152,9 @@ class LongTermMemoryStore:
         kind: MemoryKind | None = None,
         limit: int = 10,
     ) -> list[dict]:
-        """Busca memórias por correspondência de palavras-chave.
+        """Busca lexical por tokens completos, sem correspond?ncia parcial."""
 
-        A consulta é lexical, não vetorial. Os resultados são
-        ordenados pelo número de termos encontrados e pela atualização.
-        """
+        import unicodedata
 
         query = self._validate_text(query, "query")
 
@@ -166,80 +164,81 @@ class LongTermMemoryStore:
         if not isinstance(limit, int) or not 1 <= limit <= 100:
             raise ValueError("limit deve ser um inteiro entre 1 e 100.")
 
-        terms = list(
-            dict.fromkeys(re.findall(r"\w+", query.casefold()))
-        )
+        stopwords = {
+            "a", "ao", "aos", "as", "com", "como", "da", "das",
+            "de", "dela", "dele", "do", "dos", "e", "ela", "ele",
+            "em", "entre", "essa", "esse", "esta", "este", "foi",
+            "isso", "isto", "ja", "lhe", "mais", "mas", "me", "meu",
+            "minha", "muito", "na", "nas", "nem", "no", "nos",
+            "nossa", "nosso", "num", "numa", "o", "os", "ou",
+            "para", "pela", "pelas", "pelo", "pelos", "por",
+            "qual", "quando", "que", "quem", "se", "sem", "seu",
+            "sua", "tambem", "tem", "um", "uma", "umas", "uns",
+            "voce", "voces", "e", "sao", "quanto", "quantos",
+            "qual", "quais", "apresentar", "apresente",
+        }
+
+        def tokenize(value: str) -> set[str]:
+            normalized = unicodedata.normalize("NFKD", value.casefold())
+            normalized = "".join(
+                char
+                for char in normalized
+                if not unicodedata.combining(char)
+            )
+            return set(re.findall(r"[a-z0-9]+", normalized))
+
+        terms = tokenize(query) - stopwords
 
         if not terms:
             return []
 
-        where_clauses = []
-        parameters: list[str | int] = []
-
-        if kind is not None:
-            where_clauses.append("kind = ?")
-            parameters.append(kind)
-
-        # Filtra no banco por pelo menos um dos termos.
-        term_conditions = []
-
-        for term in terms:
-            term_conditions.append(
-                """
-                (
-                    lower(memory_key) LIKE ?
-                    OR lower(content) LIKE ?
-                    OR lower(tags) LIKE ?
-                )
-                """
-            )
-
-            pattern = f"%{term}%"
-            parameters.extend([pattern, pattern, pattern])
-
-        where_clauses.append(
-            "(" + " OR ".join(term_conditions) + ")"
-        )
-
-        sql = f"""
-            SELECT *
-            FROM long_term_memories
-            WHERE {" AND ".join(where_clauses)}
-            ORDER BY updated_at DESC
-            LIMIT ?
-        """
-
-        parameters.append(limit)
-
         with self._connect() as connection:
-            rows = connection.execute(
-                sql,
-                parameters,
-            ).fetchall()
+            if kind is None:
+                rows = connection.execute(
+                    """
+                    SELECT *
+                    FROM long_term_memories
+                    ORDER BY updated_at DESC
+                    """
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT *
+                    FROM long_term_memories
+                    WHERE kind = ?
+                    ORDER BY updated_at DESC
+                    """,
+                    (kind,),
+                ).fetchall()
 
-        results = [dict(row) for row in rows]
+        results = []
 
-        # Reordena os candidatos pelo número de termos correspondentes.
-        def score(memory: dict) -> int:
-            searchable = " ".join(
-                [
-                    memory["memory_key"],
-                    memory["content"],
-                    memory["tags"],
-                ]
-            ).casefold()
+        for row in rows:
+            memory = dict(row)
 
-            return sum(term in searchable for term in terms)
+            searchable = " ".join([
+                memory["memory_key"],
+                memory["content"],
+                memory["tags"],
+            ])
+
+            matches = terms.intersection(tokenize(searchable))
+
+            if matches:
+                memory["lexical_score"] = len(matches)
+                memory["lexical_matches"] = sorted(matches)
+                results.append(memory)
 
         results.sort(
             key=lambda item: (
-                score(item),
+                item["lexical_score"],
                 item["updated_at"],
             ),
             reverse=True,
         )
 
-        return results
+        return results[:limit]
 
     def list_memories(
         self,

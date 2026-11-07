@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from business_agent.memory.long_term import LongTermMemoryStore
 from business_agent.memory.hybrid_retrieval import HybridMemoryRetriever
@@ -157,3 +157,61 @@ def test_empty_memory_store_returns_no_semantic_results(tmp_path):
     )
 
     assert retriever.search("receita líquida") == []
+
+
+def test_semantic_search_recovers_without_lexical_overlap(tmp_path):
+    store = LongTermMemoryStore(tmp_path / "memory.db")
+
+    store.save_memory(
+        kind="semantic",
+        memory_key="receita_liquida",
+        content=(
+            "Receita l?quida corresponde ao faturamento bruto "
+            "ap?s a dedu??o dos descontos comerciais e devolu??es."
+        ),
+        tags=["kpi", "receita", "vendas"],
+    )
+
+    store.save_memory(
+        kind="semantic",
+        memory_key="taxa_conversao",
+        content=(
+            "Taxa de convers?o representa a propor??o de visitantes "
+            "que realizaram compras."
+        ),
+        tags=["marketing"],
+    )
+
+    question = (
+        "Quanto sobra do valor vendido depois de retirar "
+        "os abatimentos?"
+    )
+
+    # A busca lexical n?o deve encontrar correspond?ncias artificiais.
+    lexical_results = store.search_memories(
+        question,
+        limit=5,
+    )
+
+    assert lexical_results == []
+
+    retriever = HybridMemoryRetriever(
+        store,
+        index_dir=tmp_path / "faiss_index",
+    )
+
+    semantic_results = retriever.search(
+        question,
+        limit=1,
+    )
+
+    assert semantic_results
+    assert semantic_results[0]["memory_key"] == "receita_liquida"
+
+    hybrid_results = retriever.search_hybrid(
+        question,
+        limit=1,
+    )
+
+    assert hybrid_results[0]["memory_key"] == "receita_liquida"
+    assert hybrid_results[0]["retrieval_methods"] == ["semantic"]
