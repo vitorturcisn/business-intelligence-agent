@@ -111,7 +111,7 @@ def get_business_tools():
     ]
 
 
-def build_business_agent(model=None, checkpointer=None):
+def build_business_agent(model=None, checkpointer=None, tools=None):
     """
     Constrói o agente principal com SQL, RAG, API externa e memória.
 
@@ -137,8 +137,9 @@ def build_business_agent(model=None, checkpointer=None):
 
     return create_agent(
         model=model,
-        tools=get_business_tools(),
+        tools=tools if tools is not None else get_business_tools(),
         system_prompt=SYSTEM_PROMPT,
         checkpointer=checkpointer or InMemorySaver(),
         name="business_intelligence_agent",
     )
+
