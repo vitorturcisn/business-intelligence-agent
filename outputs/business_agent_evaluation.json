@@ -1,0 +1,86 @@
+{
+  "dataset": "business-intelligence-agent-evaluation-v2",
+  "evaluation_mode": "deterministic_mock",
+  "total_examples": 5,
+  "trajectory_accuracy": 1.0,
+  "answer_coverage": 1.0,
+  "results": [
+    {
+      "scenario": "sql_sales",
+      "question": "Qual foi a receita líquida e quantos pedidos ocorreram em setembro de 2026?",
+      "expected_tools": [
+        "sales_monthly_summary"
+      ],
+      "actual_tools": [
+        "sales_monthly_summary"
+      ],
+      "trajectory_score": true,
+      "answer_coverage_score": true,
+      "answer": "Resultado da análise com base nas ferramentas executadas:\n\nFonte: sales_monthly_summary\nResultado: {\n  \"order_count\": 6,\n  \"units_sold\": 40,\n  \"gross_revenue\": 26650.0,\n  \"total_discounts\": 1400.0,\n  \"net_revenue\": 25250.0,\n  \"month\": \"2026-09\",\n  \"currency\": \"BRL\"\n}",
+      "trajectory_comment": "Esperadas: ['sales_monthly_summary'] | Executadas: ['sales_monthly_summary']",
+      "coverage_comment": "Todos os termos esperados foram encontrados."
+    },
+    {
+      "scenario": "sql_category_ranking",
+      "question": "Quais categorias tiveram melhor desempenho em setembro de 2026?",
+      "expected_tools": [
+        "sales_category_ranking"
+      ],
+      "actual_tools": [
+        "sales_category_ranking"
+      ],
+      "trajectory_score": true,
+      "answer_coverage_score": true,
+      "answer": "Resultado da análise com base nas ferramentas executadas:\n\nFonte: sales_category_ranking\nResultado: [\n  {\n    \"category\": \"Eletrônicos\",\n    \"net_revenue\": 18335.0,\n    \"units_sold\": 7,\n    \"order_count\": 2,\n    \"month\": \"2026-09\",\n    \"currency\": \"BRL\"\n  },\n  {\n    \"category\": \"Móveis\",\n    \"net_revenue\": 4410.0,\n    \"units_sold\": 8,\n    \"order_count\": 2,\n    \"month\": \"2026-09\",\n    \"currency\": \"BRL\"\n  },\n  {\n    \"category\": \"Acessórios\",\n    \"net_revenue\": 2505.0,\n    \"units_sold\": 25,\n    \"order_count\": 2,\n    \"month\": \"2026-09\",\n    \"currency\": \"BRL\"\n  }\n]",
+      "trajectory_comment": "Esperadas: ['sales_category_ranking'] | Executadas: ['sales_category_ranking']",
+      "coverage_comment": "Todos os termos esperados foram encontrados."
+    },
+    {
+      "scenario": "rag_definition",
+      "question": "Qual é a definição de receita líquida?",
+      "expected_tools": [
+        "business_knowledge_search"
+      ],
+      "actual_tools": [
+        "business_knowledge_search"
+      ],
+      "trajectory_score": true,
+      "answer_coverage_score": true,
+      "answer": "Resultado da análise com base nas ferramentas executadas:\n\nFonte: business_knowledge_search\nResultado: Resultado 1\nFonte: 02_dicionario_dados.md\nPosição no documento: 455\nDistância L2: 0.6403\nConteúdo:\n## Cálculos derivados\n\nReceita bruta por item:\nquantity × unit_price\n\nValor do desconto por item:\nquantity × unit_price × discount_pct\n\nReceita líquida por item:\nquantity × unit_price × (1 - discount_pct)\n\n## Cuidados\n\n---\n\nResultado 2\nFonte: 02_dicionario_dados.md\nPosição no documento: 129\nDistância L2: 0.7183\nConteúdo:\n## Colunas\n\n- sale_id: identificador do pedido.\n- sale_date: data da venda.\n- product: nome do produto vendido.\n- category: categoria do produto.\n- region: região associada à venda.\n- quantity: quantidade de unidades vendidas.\n- unit_price: preço unitário do produto.\n- discount_pct: percentual de desconto aplicado à venda.\n\n## Cálculos derivados\n\n---\n\nResultado 3\nFonte: 01_glossario_kpis.md\nPosição no documento: 0\nDistância L2: 0.7447\nConteúdo:\n﻿# Glossário de indicadores de vendas\n\n## Receita bruta\nValor total das vendas antes da aplicação de descontos.\nFórmula por item: quantidade × preço unitário.\n\n## Descontos\nValor monetário concedido como desconto nas vendas.\nFórmula por item: receita bruta do item × percentual de desconto.\n\n---\n\nResultado 4\nFonte: 03_regras_negocio.md\nPosição no documento: 328\nDistância L2: 0.7843\nConteúdo:\n## Pedidos e unidades\nPedidos representam identificadores distintos de sale_id.\nUnidades representam a soma da coluna quantity.\nEsses indicadores não são intercambiáveis.\n\n## Descontos\nO percentual de desconto deve ser aplicado sobre o valor bruto do item.\nA receita líquida corresponde ao valor bruto menos o desconto.",
+      "trajectory_comment": "Esperadas: ['business_knowledge_search'] | Executadas: ['business_knowledge_search']",
+      "coverage_comment": "Todos os termos esperados foram encontrados."
+    },
+    {
+      "scenario": "external_api",
+      "question": "Qual é a fonte de dados utilizada para a taxa Selic?",
+      "expected_tools": [
+        "get_selic_target"
+      ],
+      "actual_tools": [
+        "get_selic_target"
+      ],
+      "trajectory_score": true,
+      "answer_coverage_score": true,
+      "answer": "Resultado da análise com base nas ferramentas executadas:\n\nFonte: get_selic_target\nResultado: {\"source\": \"Banco Central do Brasil\", \"system\": \"Sistema Gerenciador de Séries Temporais (SGS)\", \"series\": 432, \"start_date\": \"2026-09-01\", \"end_date\": \"2026-09-30\", \"fixture\": true, \"note\": \"Resposta simulada para validação da escolha e execução da ferramenta.\"}",
+      "trajectory_comment": "Esperadas: ['get_selic_target'] | Executadas: ['get_selic_target']",
+      "coverage_comment": "Todos os termos esperados foram encontrados."
+    },
+    {
+      "scenario": "multi_source",
+      "question": "Qual foi a receita líquida em setembro de 2026 e como esse indicador é calculado?",
+      "expected_tools": [
+        "sales_monthly_summary",
+        "business_knowledge_search"
+      ],
+      "actual_tools": [
+        "sales_monthly_summary",
+        "business_knowledge_search"
+      ],
+      "trajectory_score": true,
+      "answer_coverage_score": true,
+      "answer": "Resultado da análise com base nas ferramentas executadas:\n\nFonte: sales_monthly_summary\nResultado: {\n  \"order_count\": 6,\n  \"units_sold\": 40,\n  \"gross_revenue\": 26650.0,\n  \"total_discounts\": 1400.0,\n  \"net_revenue\": 25250.0,\n  \"month\": \"2026-09\",\n  \"currency\": \"BRL\"\n}\n\nFonte: business_knowledge_search\nResultado: Resultado 1\nFonte: 03_regras_negocio.md\nPosição no documento: 0\nDistância L2: 0.7722\nConteúdo:\n﻿# Regras de negócio e orientações de análise\n\n## Períodos\nAs análises mensais devem utilizar o formato YYYY-MM.\nExemplo: 2026-09 representa setembro de 2026.\n\n## Receita\nSempre diferenciar receita bruta de receita líquida.\nQuando a pergunta não especificar o tipo de receita, informar claramente qual indicador foi utilizado.\n\n---\n\nResultado 2\nFonte: 01_glossario_kpis.md\nPosição no documento: 292\nDistância L2: 0.8297\nConteúdo:\n## Receita líquida\nValor das vendas depois da aplicação dos descontos.\nFórmula: receita bruta − descontos.\n\n## Quantidade vendida\nSoma das unidades comercializadas no período analisado.\n\n## Número de pedidos\nQuantidade de identificadores de pedidos distintos no período.\nNão confundir número de pedidos com quantidade de itens vendidos.\n\n---\n\nResultado 3\nFonte: 01_glossario_kpis.md\nPosição no documento: 0\nDistância L2: 0.8730\nConteúdo:\n﻿# Glossário de indicadores de vendas\n\n## Receita bruta\nValor total das vendas antes da aplicação de descontos.\nFórmula por item: quantidade × preço unitário.\n\n## Descontos\nValor monetário concedido como desconto nas vendas.\nFórmula por item: receita bruta do item × percentual de desconto.\n\n---\n\nResultado 4\nFonte: 02_dicionario_dados.md\nPosição no documento: 129\nDistância L2: 0.9437\nConteúdo:\n## Colunas\n\n- sale_id: identificador do pedido.\n- sale_date: data da venda.\n- product: nome do produto vendido.\n- category: categoria do produto.\n- region: região associada à venda.\n- quantity: quantidade de unidades vendidas.\n- unit_price: preço unitário do produto.\n- discount_pct: percentual de desconto aplicado à venda.\n\n## Cálculos derivados",
+      "trajectory_comment": "Esperadas: ['business_knowledge_search', 'sales_monthly_summary'] | Executadas: ['business_knowledge_search', 'sales_monthly_summary']",
+      "coverage_comment": "Todos os termos esperados foram encontrados."
+    }
+  ]
+}
