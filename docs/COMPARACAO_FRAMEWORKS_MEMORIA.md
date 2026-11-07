@@ -1,4 +1,4 @@
-﻿# Comparação de Frameworks de Memória para Agentes de IA
+# Comparação de Frameworks de Memória para Agentes de IA
 
 **Projeto:** Business Intelligence Agent  
 **Data da pesquisa:** 07/11/2026
@@ -226,3 +226,53 @@ Não foi realizada uma comparação quantitativa de latência, precisão de recu
 - Referência de API: https://github.com/mem0ai/mem0/blob/main/skills/mem0/references/api-reference.md
 
 **Consulta às fontes:** 07/11/2026.
+
+## Implementacao atual: recuperacao hibrida de memoria
+
+A implementacao do projeto evoluiu de uma busca exclusivamente lexical
+para uma estrategia hibrida, combinando SQLite e FAISS.
+
+### Armazenamento
+
+O SQLite continua sendo a fonte de verdade das memorias persistidas.
+Os registros sao organizados em tres categorias:
+
+- Semanticas: conceitos e conhecimentos reutilizaveis.
+- Episodicas: historico de interacoes e eventos.
+- Procedurais: instrucoes e procedimentos.
+
+### Recuperacao lexical
+
+A busca lexical normaliza os termos da consulta, remove acentos,
+considera palavras completas e aplica uma lista de stopwords.
+Isso reduz correspondencias acidentais por substrings.
+
+### Recuperacao semantica
+
+A busca semantica utiliza embeddings multilingues do modelo
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`,
+com um indice vetorial FAISS.
+
+O indice e derivado dos registros armazenados no SQLite.
+Um fingerprint permite identificar alteracoes nas memorias e
+reconstruir o indice quando necessario.
+
+### Combinacao dos resultados
+
+A recuperacao hibrida combina os rankings lexical e semantico por
+Reciprocal Rank Fusion (RRF).
+
+O valor RRF representa uma pontuacao de combinacao de rankings;
+nao deve ser interpretado como probabilidade ou nivel de confianca.
+
+### Validacao
+
+Os testes automatizados verificam recuperacao por sinonimos e
+parafraseamentos, combinacao lexical e semantica, filtros por
+categoria, atualizacao do indice e comportamento com armazenamento
+vazio.
+
+Essa arquitetura preserva a simplicidade e persistencia do SQLite,
+enquanto amplia a capacidade de recuperar memorias expressas com
+vocabulario diferente daquele utilizado no momento do armazenamento.
+
