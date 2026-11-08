@@ -947,16 +947,16 @@ def main() -> None:
                             "de memória pessoal"
                         )
 
-                    elif "DETERMINISTIC_ROUTER" in action_log:
-                        print(
-                            "Orquestração: roteador determinístico "
-                            "de métricas"
-                        )
-
                     elif "RAG_DETERMINISTIC_ROUTER" in action_log:
                         print(
                             "Orquestração: roteador conceitual + "
                             "RAG + Qwen3 AgentExecutor"
+                        )
+
+                    elif "DETERMINISTIC_ROUTER" in action_log:
+                        print(
+                            "Orquestração: roteador determinístico "
+                            "de métricas"
                         )
 
                     elif "PERSISTENT_MEMORY_ROUTER" in action_log:

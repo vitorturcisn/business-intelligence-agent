@@ -1,4 +1,4 @@
-﻿import json
+import json
 import re
 import unicodedata
 from functools import lru_cache
@@ -228,23 +228,64 @@ def extract_numeric_values(text: str) -> set[tuple[Decimal, bool]]:
 
 
 def extract_claims(response: str) -> list[str]:
-    """Separa a resposta em afirmações para avaliação individual."""
-    if not response or not response.strip():
-        raise ValueError("A resposta não pode estar vazia.")
-
+    """Extrai afirmações atômicas, separando comparações entre receita bruta e líquida."""
     parts = re.split(
         r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])|\n+",
         response.strip(),
     )
+    claims: list[str] = []
 
-    claims = [
-        part.strip(" \t-*\r")
-        for part in parts
-        if part.strip(" \t-*\r")
-    ]
+    def has_metric(text: str, metric: str) -> bool:
+        normalized = _normalize_match_text(text)
+        if metric == "net":
+            return bool(re.search(r"\b(receita\s+liquida|liquida)\b", normalized))
+        return bool(re.search(r"\b(receita\s+bruta|bruta)\b", normalized))
 
-    if not claims:
-        raise ValueError("Nenhuma afirmação foi identificada.")
+    def finish_clause(text: str) -> str:
+        text = re.sub(r"\s+", " ", text).strip(" \t-,:;")
+        if text and text[-1] not in ".!?":
+            text += "."
+        return text
+
+    for part in parts:
+        cleaned = re.sub(r"[*_`#]", "", part)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" \t-\r")
+        if not cleaned:
+            continue
+        # Cabeçalhos isolados, como "No exemplo de setembro:", não são afirmações.
+        if cleaned.endswith(":") and not re.search(r"[.!?]", cleaned):
+            continue
+
+        clauses = [finish_clause(cleaned)]
+        # "Enquanto" só é tratado como separador quando contrapõe explicitamente
+        # receita líquida e receita bruta. Outros usos temporais permanecem intactos.
+        comparison = re.split(r"\s+enquanto\s+", cleaned, maxsplit=1, flags=re.IGNORECASE)
+        if len(comparison) == 2:
+            left, right = comparison[0], comparison[1]
+            opposite_revenue_metrics = (
+                (has_metric(left, "net") and has_metric(right, "gross"))
+                or (has_metric(left, "gross") and has_metric(right, "net"))
+            )
+            if opposite_revenue_metrics:
+                # Quando a segunda parte usa uma referência anafórica como "esses descontos",
+                # torna a afirmação autônoma e aproxima a redação da definição do glossário.
+                if has_metric(left, "net") and has_metric(right, "gross"):
+                    normalized_right = _normalize_match_text(right)
+                    refers_to_discount_without_context = (
+                        "nao considera esses descontos" in normalized_right
+                        or "nao considera os descontos" in normalized_right
+                        or "nao considera desconto" in normalized_right
+                    )
+                    if refers_to_discount_without_context:
+                        right = (
+                            "A receita bruta é o valor total das vendas "
+                            "antes da aplicação de descontos"
+                        )
+                clauses = [finish_clause(left), finish_clause(right)]
+
+        for clause in clauses:
+            if clause and clause not in claims:
+                claims.append(clause)
 
     return claims
 
@@ -354,25 +395,38 @@ def _extract_metric_facts(item: Evidence) -> list[tuple[str, Decimal, str | None
         # poderia associar por engano um valor vizinho a outra chave.
         return list(dict.fromkeys(facts))
 
-    # Também aceita evidências textuais rotuladas, por exemplo:
-    # "Receita líquida: R$ 25.250,00".
+    # Aceita fatos textuais nos dois formatos mais comuns:
+    # "Receita líquida: R$ 25.250,00" e "6 pedidos".
     normalized_content = _normalize_match_text(item.content)
+    number_pattern = r"(?:r\$\s*|brl\s*)?(-?\d[\d.,]*)"
+
     for metric, aliases in _METRIC_ALIASES.items():
         for alias in aliases:
             normalized_alias = _normalize_match_text(alias)
-            pattern = re.compile(
-                rf"{re.escape(normalized_alias)}[^\n]{{0,70}}?"
-                rf"(?:r\$\s*|brl\s*)?(-?\d[\d.,]*)",
+            escaped_alias = re.escape(normalized_alias)
+
+            # Formato rótulo -> valor: "receita líquida: R$ 25.250,00".
+            label_first = re.compile(
+                rf"(?<!\w){escaped_alias}(?!\w)"
+                rf"[^\n:;]{{0,20}}[:=]?\s*{number_pattern}",
                 flags=re.IGNORECASE,
             )
-            match = pattern.search(normalized_content)
-            if match:
+            for match in label_first.finditer(normalized_content):
                 parsed = _parse_number(match.group(1).rstrip(".,;"))
                 if parsed is not None and not parsed[1]:
                     facts.append((metric, parsed[0], None))
-                break
 
-    # Remove fatos repetidos (JSON + trecho textual podem descrever o mesmo valor).
+            # Formato valor -> rótulo: "6 pedidos" ou "R$ 25.250 receita líquida".
+            value_first = re.compile(
+                rf"{number_pattern}\s+(?:de\s+)?"
+                rf"{escaped_alias}(?!\w)",
+                flags=re.IGNORECASE,
+            )
+            for match in value_first.finditer(normalized_content):
+                parsed = _parse_number(match.group(1).rstrip(".,;"))
+                if parsed is not None and not parsed[1]:
+                    facts.append((metric, parsed[0], None))
+
     return list(dict.fromkeys(facts))
 
 
@@ -473,12 +527,52 @@ def _find_metric_numeric_match(
     return source, evidenced_value
 
 
+_EVIDENCE_STOPWORDS = {
+    "a", "as", "o", "os", "um", "uma", "de", "do", "da", "dos", "das",
+    "em", "no", "na", "nos", "nas", "por", "para", "com", "e", "ou",
+    "que", "foi", "foram", "ser", "sao", "são", "é", "ao", "aos",
+    "pelo", "pela", "se", "seu", "sua", "seus", "suas", "valor", "valores",
+}
+
+
+def _evidence_relevance_score(claim: str, evidence_content: str) -> float:
+    """Estimate lexical/topic relevance before spending NLI on an evidence chunk."""
+    claim_terms = {
+        token
+        for token in re.findall(r"[^\W_]+", _normalize_match_text(claim))
+        if token not in _EVIDENCE_STOPWORDS
+    }
+    evidence_terms = {
+        token
+        for token in re.findall(r"[^\W_]+", _normalize_match_text(evidence_content))
+        if token not in _EVIDENCE_STOPWORDS
+    }
+
+    if not claim_terms:
+        return 0.0
+
+    coverage = len(claim_terms.intersection(evidence_terms)) / len(claim_terms)
+    claim_metrics = _detect_all_metrics(claim)
+    evidence_metrics = _detect_all_metrics(evidence_content)
+    metric_boost = 0.35 if claim_metrics.intersection(evidence_metrics) else 0.0
+
+    return max(coverage, metric_boost)
+
+
 def _classify_claim(
     claim: str,
     evidence: list[Evidence],
     classifier: NLIClassifier,
     threshold: float,
 ) -> ClaimAssessment:
+    """Classify a claim without allowing one noisy source to overrule all others.
+
+    Entailment is assessed in the normal evidence -> claim direction.
+    A contradiction is accepted only when the contradiction score is strong
+    in both directions. If one source supports the claim and another provides
+    a confirmed contradiction, the result is NEUTRA (source disagreement),
+    not an automatic REFUTA.
+    """
     if not evidence:
         return ClaimAssessment(
             claim=claim,
@@ -487,48 +581,99 @@ def _classify_claim(
             explanation="Nenhuma evidência foi fornecida.",
         )
 
-    results = []
+    supported: list[tuple[str, dict[str, float]]] = []
+    contradicted: list[tuple[str, dict[str, float], float]] = []
+    all_results: list[tuple[str, dict[str, float]]] = []
+
     for item in evidence:
-        scores = classifier.classify(
+        forward = classifier.classify(
             premise=item.content,
             hypothesis=claim,
         )
-        results.append((item.source, scores))
+        all_results.append((item.source, forward))
 
-    best_support = max(
-        results,
-        key=lambda item: item[1].get("entailment", 0.0),
+        entailment = forward.get("entailment", 0.0)
+        contradiction = forward.get("contradiction", 0.0)
+
+        if entailment >= threshold and entailment > contradiction:
+            supported.append((item.source, forward))
+            continue
+
+        # NLI contradiction can be asymmetric or noisy for paraphrases.
+        # Confirm only candidate contradictions in the reverse direction.
+        if contradiction >= threshold and contradiction > entailment:
+            reverse = classifier.classify(
+                premise=claim,
+                hypothesis=item.content,
+            )
+            reverse_contradiction = reverse.get("contradiction", 0.0)
+            reverse_entailment = reverse.get("entailment", 0.0)
+
+            if (
+                reverse_contradiction >= threshold
+                and reverse_contradiction > reverse_entailment
+            ):
+                confirmed_score = min(contradiction, reverse_contradiction)
+                contradicted.append((item.source, forward, confirmed_score))
+
+    best_support = (
+        max(supported, key=lambda item: item[1].get("entailment", 0.0))
+        if supported
+        else None
     )
-    best_contradiction = max(
-        results,
-        key=lambda item: item[1].get("contradiction", 0.0),
+    best_contradiction = (
+        max(contradicted, key=lambda item: item[2])
+        if contradicted
+        else None
     )
 
-    support_score = best_support[1].get("entailment", 0.0)
-    contradiction_score = best_contradiction[1].get("contradiction", 0.0)
+    source: str | None = None
+    scores: dict[str, float] = {}
 
-    if (
-        contradiction_score >= threshold
-        and contradiction_score > support_score
-    ):
-        verdict: Verdict = "REFUTA"
-        confidence = contradiction_score
-        source = best_contradiction[0]
-        scores = best_contradiction[1]
-        explanation = "A evidência apresenta uma relação de contradição."
-
-    elif support_score >= threshold:
-        verdict = "APOIA"
-        confidence = support_score
-        source = best_support[0]
+    if best_support and best_contradiction:
+        # Conflicting sources are not enough to call a claim false.
+        verdict: Verdict = "NEUTRA"
+        confidence = max(
+            best_support[1].get("entailment", 0.0),
+            best_contradiction[2],
+        )
         scores = best_support[1]
-        explanation = "A evidência sustenta a afirmação."
+        explanation = (
+            "As evidências recuperadas divergem: uma fonte sustenta a afirmação "
+            "e outra apresenta contradição confirmada. É necessária revisão "
+            "da documentação antes de concluir."
+        )
+
+    elif best_contradiction:
+        verdict = "REFUTA"
+        source, scores, confidence = best_contradiction
+        explanation = (
+            "A contradição foi confirmada nas duas direções pela evidência."
+        )
+
+    elif best_support:
+        verdict = "APOIA"
+        source, scores = best_support
+        confidence = scores.get("entailment", 0.0)
+        explanation = "A evidência relevante sustenta a afirmação."
 
     else:
         verdict = "NEUTRA"
-        confidence = max(support_score, contradiction_score)
-        source = None
-        scores = best_support[1]
+        confidence = max(
+            (
+                max(
+                    item_scores.get("entailment", 0.0),
+                    item_scores.get("contradiction", 0.0),
+                )
+                for _, item_scores in all_results
+            ),
+            default=0.0,
+        )
+        if all_results:
+            scores = max(
+                all_results,
+                key=lambda item: item[1].get("entailment", 0.0),
+            )[1]
         explanation = "As evidências não permitem confirmar a afirmação."
 
     claim_numbers = extract_numeric_values(claim)
@@ -539,10 +684,8 @@ def _classify_claim(
 
     missing_numbers = claim_numbers - available_numbers
 
-    # Quando a afirmação atribui um valor monetário a uma métrica identificável
-    # e o SQL fornece outro valor para a mesma métrica/período, há contradição
-    # direta. Essa regra evita depender de uma pontuação NLI que pode ficar abaixo
-    # do threshold mesmo diante de um conflito numérico objetivo.
+    # An objective conflict for the same labeled metric/period has priority
+    # over probabilistic language classification.
     numeric_conflict = _find_metric_numeric_conflict(claim, evidence)
     if numeric_conflict is not None:
         source, claimed_value, evidenced_value = numeric_conflict
@@ -563,9 +706,7 @@ def _classify_claim(
                 "registrado na evidência para a mesma métrica."
             )
 
-    # A ausência de um valor na evidência não prova, sozinha,
-    # que ele é falso. Sem uma comparação direta para a mesma métrica,
-    # classificamos o número não encontrado como NEUTRA.
+    # An absent number is not proof of falsity.
     if missing_numbers and verdict != "REFUTA":
         verdict = "NEUTRA"
         source = None
@@ -589,35 +730,174 @@ def _classify_claim(
 
 
 # Palavras funcionais são removidas apenas na comparação de estrutura.
-# Termos que alteram o significado (por exemplo, "não", "bruta" e
-# "líquida") são preservados.
+# Termos que alteram o significado são preservados.
 _COHERENCE_STOPWORDS = {
     "a", "as", "o", "os", "um", "uma", "uns", "umas",
     "de", "do", "da", "dos", "das", "em", "no", "na", "nos", "nas",
     "por", "para", "com", "e", "que", "foi", "foram", "ser", "sao",
     "são", "era", "eram", "é", "ao", "aos", "pelo", "pela", "se",
-    "seu", "sua", "seus", "suas", "valor", "valores",
+    "seu", "sua", "seus", "suas", "valor", "valores", "total",
 }
 
 
 def _normalized_claim_tokens(claim: str) -> set[str]:
-    """Retorna os termos da afirmação, ignorando números e palavras funcionais."""
-    without_numbers = NUMBER_PATTERN.sub(" ", claim.lower())
+    """Return meaningful words, ignoring numbers, Markdown and stopwords."""
+    without_markdown = re.sub(r"[*_`~]+", "", claim.lower())
+    without_numbers = NUMBER_PATTERN.sub(" ", without_markdown)
     tokens = re.findall(r"[^\W_]+", without_numbers, flags=re.UNICODE)
     return {token for token in tokens if token not in _COHERENCE_STOPWORDS}
 
 
-def _has_direct_numeric_conflict(first_claim: str, second_claim: str) -> bool:
-    """Detecta valores diferentes em afirmações com a mesma estrutura textual.
+def _detect_all_metrics(text: str) -> set[str]:
+    """Return every known metric explicitly mentioned in a claim or evidence."""
+    normalized = _normalize_match_text(text)
+    normalized = re.sub(r"[^\w]+", " ", normalized).strip()
+    detected: set[str] = set()
 
-    Esta regra determinística complementa o NLI. Ela cobre especialmente
-    divergências de métricas numéricas e não depende do comportamento do
-    classificador, que pode variar entre o modelo real e doubles de teste.
-    """
+    for metric, aliases in _METRIC_ALIASES.items():
+        for alias in aliases:
+            normalized_alias = _normalize_match_text(alias)
+            normalized_alias = re.sub(r"[^\w]+", " ", normalized_alias).strip()
+            if re.search(
+                rf"(?<!\w){re.escape(normalized_alias)}(?!\w)",
+                normalized,
+            ):
+                detected.add(metric)
+                break
+
+    return detected
+
+
+def _detect_primary_metric(text: str) -> str | None:
+    """Return the first explicitly named metric in a multi-metric sentence."""
+    normalized = _normalize_match_text(text)
+    normalized = re.sub(r"[^\w]+", " ", normalized).strip()
+    matches: list[tuple[int, int, str]] = []
+
+    for metric, aliases in _METRIC_ALIASES.items():
+        for alias in aliases:
+            normalized_alias = _normalize_match_text(alias)
+            normalized_alias = re.sub(r"[^\w]+", " ", normalized_alias).strip()
+            for match in re.finditer(
+                rf"(?<!\w){re.escape(normalized_alias)}(?!\w)",
+                normalized,
+            ):
+                matches.append((match.start(), -len(normalized_alias), metric))
+
+    if not matches:
+        return None
+
+    return min(matches)[2]
+
+
+def _claims_share_subject(first_claim: str, second_claim: str) -> bool:
+    """Avoid comparing statements about different business metrics."""
+    first_metrics = _detect_all_metrics(first_claim)
+    second_metrics = _detect_all_metrics(second_claim)
+
+    if first_metrics and second_metrics:
+        return bool(first_metrics.intersection(second_metrics))
+
+    first_tokens = _normalized_claim_tokens(first_claim)
+    second_tokens = _normalized_claim_tokens(second_claim)
+
+    if not first_tokens or not second_tokens:
+        return False
+
+    overlap = len(first_tokens.intersection(second_tokens))
+    denominator = min(len(first_tokens), len(second_tokens))
+    return denominator > 0 and overlap / denominator >= 0.50
+
+
+def _subjects_for_cues(claim: str, cues: set[str]) -> set[str]:
+    """Find metric subjects in the clause containing a polarity/opposition cue."""
+    clauses = re.split(
+        r"\b(?:enquanto|mas|porém|porem|contudo|todavia|ao passo que)\b|[;.!?]",
+        claim.lower(),
+    )
+    subjects: set[str] = set()
+
+    for clause in clauses:
+        tokens = set(re.findall(r"[^\W_]+", _normalize_match_text(clause)))
+        if tokens.intersection(cues):
+            clause_metrics = _detect_all_metrics(clause)
+            # "Descontos" often appears as the object of a revenue claim,
+            # not as the subject whose before/after relation is being stated.
+            if len(clause_metrics) > 1:
+                clause_metrics.discard("total_discounts")
+            subjects.update(clause_metrics)
+
+    return subjects
+
+
+def _has_explicit_opposition(first_claim: str, second_claim: str) -> bool:
+    """Require an explicit opposite relation before pairwise NLI coherence checks."""
+    first_tokens = set(re.findall(r"[^\W_]+", _normalize_match_text(first_claim)))
+    second_tokens = set(re.findall(r"[^\W_]+", _normalize_match_text(second_claim)))
+
+    opposite_pairs = (
+        ({"antes"}, {"após", "apos", "depois"}),
+        ({"maior", "maiores"}, {"menor", "menores"}),
+        ({"inclui", "incluem", "incluir"}, {"exclui", "excluem", "excluir"}),
+        ({"considera", "consideram"}, {"desconsidera", "desconsideram"}),
+        ({"aumenta", "aumentam", "cresce", "crescem"}, {"diminui", "diminuem", "reduz", "reduzem", "cai"}),
+        ({"positivo", "positiva"}, {"negativo", "negativa"}),
+        ({"permitido", "permitida"}, {"proibido", "proibida"}),
+        ({"com"}, {"sem"}),
+    )
+
+    for left_cues, right_cues in opposite_pairs:
+        first_left = _subjects_for_cues(first_claim, left_cues)
+        second_right = _subjects_for_cues(second_claim, right_cues)
+        if first_left and second_right and first_left.intersection(second_right):
+            return True
+
+        first_right = _subjects_for_cues(first_claim, right_cues)
+        second_left = _subjects_for_cues(second_claim, left_cues)
+        if first_right and second_left and first_right.intersection(second_left):
+            return True
+
+    # Negation only counts when both claims use the same predicate and metric.
+    negations = {"não", "nao", "nunca", "jamais"}
+    negated_first = bool(first_tokens.intersection(negations))
+    negated_second = bool(second_tokens.intersection(negations))
+    shared_predicates = {
+        "considera", "consideram", "inclui", "incluem", "aplica", "aplicam",
+        "utiliza", "utilizam", "possui", "possuem", "tem", "têm",
+        "contem", "contém", "representa", "representam", "incorpora", "incorporam",
+    }
+
+    if negated_first != negated_second:
+        if first_tokens.intersection(second_tokens).intersection(shared_predicates):
+            first_metrics = _detect_all_metrics(first_claim)
+            second_metrics = _detect_all_metrics(second_claim)
+            if first_metrics.intersection(second_metrics):
+                return True
+
+    return False
+
+
+def _has_direct_numeric_conflict(first_claim: str, second_claim: str) -> bool:
+    """Detect different values only when both claims refer to the same metric."""
     first_numbers = extract_numeric_values(first_claim)
     second_numbers = extract_numeric_values(second_claim)
 
     if not first_numbers or not second_numbers or first_numbers == second_numbers:
+        return False
+
+    first_primary_metric = _detect_primary_metric(first_claim)
+    second_primary_metric = _detect_primary_metric(second_claim)
+
+    # If each sentence assigns a value to a different primary metric, those
+    # values are not contradictory (e.g. gross revenue versus net revenue).
+    if (
+        first_primary_metric is not None
+        and second_primary_metric is not None
+        and first_primary_metric != second_primary_metric
+    ):
+        return False
+
+    if not _claims_share_subject(first_claim, second_claim):
         return False
 
     first_tokens = _normalized_claim_tokens(first_claim)
@@ -628,10 +908,28 @@ def _has_direct_numeric_conflict(first_claim: str, second_claim: str) -> bool:
 
     union = first_tokens | second_tokens
     similarity = len(first_tokens & second_tokens) / len(union)
+    return similarity >= 0.65
 
-    # Exige estrutura muito semelhante para não confundir métricas distintas
-    # (por exemplo, receita bruta e receita líquida) como conflito numérico.
-    return similarity >= 0.80
+
+def _claims_share_subject(first_claim: str, second_claim: str) -> bool:
+    """Avoid pairwise NLI comparisons between claims about distinct metrics."""
+    first_metric = _detect_metric(first_claim)
+    second_metric = _detect_metric(second_claim)
+
+    if first_metric and second_metric and first_metric != second_metric:
+        return False
+
+    first_tokens = _normalized_claim_tokens(first_claim)
+    second_tokens = _normalized_claim_tokens(second_claim)
+
+    if not first_tokens or not second_tokens:
+        return False
+
+    overlap = len(first_tokens & second_tokens) / min(
+        len(first_tokens),
+        len(second_tokens),
+    )
+    return overlap >= 0.50
 
 
 def check_logical_coherence(
@@ -639,11 +937,10 @@ def check_logical_coherence(
     classifier: NLIClassifier,
     threshold: float = 0.70,
 ) -> list[CoherenceIssue]:
-    """Identifica afirmações contraditórias usando regras numéricas e NLI.
+    """Check contradictions only between claims sharing the same subject.
 
-    Valores diferentes em afirmações de estrutura praticamente idêntica são
-    tratados como conflito direto. Nos demais casos, exige-se contradição NLI
-    forte nas duas direções para reduzir falsos positivos de paráfrases.
+    Direct numeric conflicts remain deterministic. Semantic contradictions
+    require strong NLI contradiction in both directions.
     """
     issues = []
 
@@ -659,6 +956,9 @@ def check_logical_coherence(
                 )
                 continue
 
+            if not _claims_share_subject(first_claim, second_claim):
+                continue
+
             forward = classifier.classify(
                 premise=first_claim,
                 hypothesis=second_claim,
@@ -668,12 +968,16 @@ def check_logical_coherence(
                 hypothesis=first_claim,
             )
 
-            score = min(
-                forward.get("contradiction", 0.0),
-                backward.get("contradiction", 0.0),
-            )
+            forward_contradiction = forward.get("contradiction", 0.0)
+            backward_contradiction = backward.get("contradiction", 0.0)
+            score = min(forward_contradiction, backward_contradiction)
 
-            if score >= threshold:
+            # Contradiction must dominate entailment in both directions.
+            if (
+                score >= threshold
+                and forward_contradiction > forward.get("entailment", 0.0)
+                and backward_contradiction > backward.get("entailment", 0.0)
+            ):
                 issues.append(
                     CoherenceIssue(
                         first_claim=first_claim,

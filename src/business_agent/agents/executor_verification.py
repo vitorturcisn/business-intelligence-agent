@@ -1,4 +1,7 @@
-﻿import json
+from __future__ import annotations
+
+import json
+import re
 from typing import Any
 
 from business_agent.verification.nli_verifier import (
@@ -8,6 +11,11 @@ from business_agent.verification.nli_verifier import (
     VerificationReport,
     verify_response,
 )
+
+
+_RAG_BLOCK_SEPARATOR = re.compile(r"\r?\n\s*---\s*\r?\n")
+_RAG_SOURCE_PATTERN = re.compile(r"(?m)^Fonte:[ \t]*(.+?)[ \t]*$")
+_RAG_CONTENT_PATTERN = re.compile(r"(?ms)^Conteúdo:[ \t]*\r?\n(.*)$")
 
 
 def _to_text(value: Any) -> str:
@@ -21,28 +29,60 @@ def _to_text(value: Any) -> str:
     )
 
 
+def _split_rag_documents(content: str) -> list[Evidence]:
+    """Split the formatted RAG response into one Evidence per source chunk."""
+    documents: list[Evidence] = []
+
+    for block in _RAG_BLOCK_SEPARATOR.split(content):
+        source_match = _RAG_SOURCE_PATTERN.search(block)
+        content_match = _RAG_CONTENT_PATTERN.search(block)
+
+        if not source_match or not content_match:
+            continue
+
+        document_source = source_match.group(1).strip()
+        document_content = content_match.group(1).strip()
+
+        if not document_content:
+            continue
+
+        documents.append(
+            Evidence(
+                source=f"business_knowledge_search:{document_source}",
+                content=document_content,
+            )
+        )
+
+    return documents
+
+
 def extract_executor_evidence(
     result: dict[str, Any],
 ) -> list[Evidence]:
-    """Extrai evidências das ferramentas executadas pelo AgentExecutor."""
-
-    evidence = []
+    """Extract tool evidence, splitting RAG results by document/source."""
+    evidence: list[Evidence] = []
 
     for step in result.get("intermediate_steps", []):
         if not isinstance(step, (tuple, list)) or len(step) != 2:
             continue
 
         action, observation = step
-
         content = _to_text(observation).strip()
+
         if not content:
             continue
 
-        source = getattr(action, "tool", "unknown_tool")
+        source = str(getattr(action, "tool", "unknown_tool"))
+
+        if source == "business_knowledge_search":
+            rag_documents = _split_rag_documents(content)
+            if rag_documents:
+                evidence.extend(rag_documents)
+                continue
 
         evidence.append(
             Evidence(
-                source=str(source),
+                source=source,
                 content=content,
             )
         )
@@ -54,12 +94,11 @@ def verify_executor_result(
     result: dict[str, Any],
     classifier: NLIClassifier | None = None,
 ) -> VerificationReport:
-    """Verifica a resposta final contra as observações das ferramentas."""
-
+    """Verify the final answer against observations returned by tools."""
     answer = result.get("output")
 
     if not isinstance(answer, str) or not answer.strip():
-        raise ValueError("O executor nao retornou uma resposta valida.")
+        raise ValueError("O executor não retornou uma resposta válida.")
 
     evidence = extract_executor_evidence(result)
 
@@ -74,16 +113,12 @@ def render_verified_answer(
     result: dict[str, Any],
     report: VerificationReport,
 ) -> str:
-    """
-    Libera a resposta original somente quando todas as afirmacoes
-    forem consideradas sustentadas.
-    """
-
+    """Release the original answer only when every claim is supported."""
     if report.overall_verdict == "SUSTENTADA":
         return result["output"]
 
     lines = [
-        "RESPOSTA NAO LIBERADA PELO VERIFICADOR.",
+        "RESPOSTA NÃO LIBERADA PELO VERIFICADOR.",
         "",
         f"Veredito: {report.overall_verdict}",
         report.summary,
@@ -92,32 +127,28 @@ def render_verified_answer(
     ]
 
     for assessment in report.claims:
-        if (
-            assessment.verdict != "APOIA"
-            or assessment.unsupported_numbers
-        ):
+        if assessment.verdict != "APOIA" or assessment.unsupported_numbers:
             lines.append(
                 f"- [{assessment.verdict}] {assessment.claim}"
             )
 
             if assessment.unsupported_numbers:
                 lines.append(
-                    "  Valores sem correspondencia nas evidencias: "
+                    "  Valores sem correspondência nas evidências: "
                     + ", ".join(assessment.unsupported_numbers)
                 )
 
     if report.coherence_issues:
-        lines.append("")
-        lines.append("Foram identificadas possíveis incoerências entre afirmações.")
-
-    lines.append("")
-    lines.append(
-        "Fontes analisadas: "
-        + (
-            ", ".join(report.evidence_sources)
-            if report.evidence_sources
-            else "nenhuma"
+        lines.extend(
+            ["", "Foram identificadas possíveis incoerências entre afirmações."]
         )
+
+    lines.extend(
+        [
+            "",
+            "Fontes analisadas: "
+            + (", ".join(report.evidence_sources) if report.evidence_sources else "nenhuma"),
+        ]
     )
 
     return "\n".join(lines)

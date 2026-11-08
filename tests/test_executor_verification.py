@@ -1,4 +1,4 @@
-﻿from types import SimpleNamespace
+from types import SimpleNamespace
 
 from business_agent.agents.executor_verification import (
     extract_executor_evidence,
@@ -77,6 +77,37 @@ def test_contradicted_executor_answer_is_blocked():
     rendered = render_verified_answer(result, report)
 
     assert report.overall_verdict == "REFUTADA"
-    assert "NAO LIBERADA" in rendered
+    assert "LIBERADA PELO VERIFICADOR" in rendered
     assert "12 pedidos" in rendered
     assert rendered != result["output"]
+
+
+
+def test_rag_tool_observation_is_split_per_document():
+    action = SimpleNamespace(tool="business_knowledge_search")
+    observation = (
+        "Resultado 1\n"
+        "Fonte: 01_glossario_kpis.md\n"
+        "Posição no documento: 0\n"
+        "Conteúdo:\n"
+        "## Receita bruta\nValor total das vendas antes de descontos.\n"
+        "\n---\n\n"
+        "Resultado 2\n"
+        "Fonte: 02_dicionario_dados.md\n"
+        "Posição no documento: 455\n"
+        "Conteúdo:\n"
+        "Receita bruta por item: quantity × unit_price."
+    )
+
+    evidence = extract_executor_evidence(
+        {
+            "output": "A receita bruta é calculada antes dos descontos.",
+            "intermediate_steps": [(action, observation)],
+        }
+    )
+
+    assert len(evidence) == 2
+    assert evidence[0].source == "business_knowledge_search:01_glossario_kpis.md"
+    assert evidence[1].source == "business_knowledge_search:02_dicionario_dados.md"
+    assert "Resultado 2" not in evidence[0].content
+    assert "quantity × unit_price" in evidence[1].content
