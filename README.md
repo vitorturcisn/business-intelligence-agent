@@ -1,12 +1,12 @@
-﻿# Business Intelligence Agent
+# Business Intelligence Agent
 
-Projeto de pÃ³s-graduaÃ§Ã£o em agentes de IA, desenvolvido com Python, LangChain e LangGraph. A soluÃ§Ã£o combina consultas SQL, recuperaÃ§Ã£o documental (RAG), consulta a uma API econÃ´mica, memÃ³ria conversacional e persistente e verificaÃ§Ã£o factual baseada em Natural Language Inference (NLI).
+Projeto de pós-graduação em agentes de IA, desenvolvido com Python, LangChain e LangGraph. A solução combina consultas SQL, recuperação documental (RAG), consulta a uma API econômica, memória conversacional e persistente e verificação factual baseada em Natural Language Inference (NLI).
 
 ## 1. Objetivo
 
-Construir um agente de Business Intelligence capaz de responder perguntas sobre dados de vendas e regras de negÃ³cio, consultar uma fonte externa de indicadores econÃ´micos e preservar informaÃ§Ãµes relevantes entre interaÃ§Ãµes.
+Construir um agente de Business Intelligence capaz de responder perguntas sobre dados de vendas e regras de negócio, consultar uma fonte externa de indicadores econômicos e preservar informações relevantes entre interações.
 
-O projeto explora chains, agentes e ferramentas, diferentes estratÃ©gias de orquestraÃ§Ã£o, RAG, memÃ³ria de curto e longo prazo, verificaÃ§Ã£o de respostas e observabilidade.
+O projeto explora chains, agentes e ferramentas, diferentes estratégias de orquestração, RAG, memória de curto e longo prazo, verificação de respostas e observabilidade.
 
 ## 2. Arquitetura
 
@@ -38,81 +38,81 @@ flowchart TD
     Q -. rastreamento .-> LS[LangSmith]
 ```
 
-O repositÃ³rio reÃºne mais de uma abordagem de agentes para fins didÃ¡ticos. A demonstraÃ§Ã£o interativa integrada `scripts/run_local_openai_tools_agent.py`, validada com o modelo local Qwen3, utiliza `create_openai_tools_agent` e `AgentExecutor`. HÃ¡ tambÃ©m demonstraÃ§Ãµes de outras estratÃ©gias, incluindo `create_agent` e ReAct clÃ¡ssico.
+O repositório reúne mais de uma abordagem de agentes para fins didáticos. A demonstração interativa integrada `scripts/run_local_openai_tools_agent.py`, validada com o modelo local Qwen3, utiliza `create_openai_tools_agent` e `AgentExecutor`. Há também demonstrações de outras estratégias, incluindo `create_agent` e ReAct clássico.
 
-Na demonstraÃ§Ã£o integrada, o orquestrador aplica rotas determinÃ­sticas antes de recorrer ao modelo:
+Na demonstração integrada, o orquestrador aplica rotas determinísticas antes de recorrer ao modelo:
 
-1. Perguntas de recordaÃ§Ã£o pessoal consultam diretamente memÃ³rias explicitamente salvas.
-2. Perguntas quantitativas mensais sÃ£o resolvidas por SQL, que permanece como fonte de verdade para os valores.
-3. Perguntas conceituais consultam primeiro a base RAG; as evidÃªncias recuperadas sÃ£o entÃ£o fornecidas ao Qwen3 para formular a resposta.
-4. Perguntas gerais podem recuperar contexto por meio da busca hÃ­brida de memÃ³ria antes de chamar o agente.
+1. Perguntas de recordação pessoal consultam diretamente memórias explicitamente salvas.
+2. Perguntas quantitativas mensais são resolvidas por SQL, que permanece como fonte de verdade para os valores.
+3. Perguntas conceituais consultam primeiro a base RAG; as evidências recuperadas são então fornecidas ao Qwen3 para formular a resposta.
+4. Perguntas gerais podem recuperar contexto por meio da busca híbrida de memória antes de chamar o agente.
 
-As respostas geradas sÃ£o verificadas contra as observaÃ§Ãµes das ferramentas. A resposta original sÃ³ Ã© liberada quando o verificador classifica todas as afirmaÃ§Ãµes como sustentadas.
+As respostas geradas são verificadas contra as observações das ferramentas. A resposta original só é liberada quando o verificador classifica todas as afirmações como sustentadas.
 
 ## 3. Componentes
 
 ### Chains e processamento
 
 - `PromptTemplate` e `ChatPromptTemplate`.
-- LCEL e composiÃ§Ã£o de componentes.
-- SaÃ­da estruturada com Pydantic.
-- ExecuÃ§Ã£o `invoke`, `batch` e `stream`.
+- LCEL e composição de componentes.
+- Saída estruturada com Pydantic.
+- Execução `invoke`, `batch` e `stream`.
 - Chains sequenciais e paralelas e roteamento.
 - Few-shot prompting e estrutura PTCF.
 
 ### Agentes e ferramentas
 
-- DemonstraÃ§Ã£o integrada com `create_openai_tools_agent` e `AgentExecutor`.
-- ExecuÃ§Ã£o local do Qwen3 por meio da interface compatÃ­vel com a API da OpenAI fornecida pelo Ollama.
-- DemonstraÃ§Ãµes adicionais com `create_agent` e ReAct clÃ¡ssico.
-- Ferramenta SQL para consultas somente leitura Ã  base SQLite de vendas.
-- Ferramenta RAG para recuperaÃ§Ã£o de conhecimento documental.
-- Ferramenta conectada Ã  API SGS do Banco Central do Brasil, sÃ©rie 432 (Selic).
-- Ferramentas para gravar e recuperar memÃ³rias.
+- Demonstração integrada com `create_openai_tools_agent` e `AgentExecutor`.
+- Execução local do Qwen3 por meio da interface compatível com a API da OpenAI fornecida pelo Ollama.
+- Demonstrações adicionais com `create_agent` e ReAct clássico.
+- Ferramenta SQL para consultas somente leitura à base SQLite de vendas.
+- Ferramenta RAG para recuperação de conhecimento documental.
+- Ferramenta conectada à API SGS do Banco Central do Brasil, série 432 (Selic).
+- Ferramentas para gravar e recuperar memórias.
 
 ### RAG
 
-A base documental estÃ¡ em `data/knowledge_base/` e contÃ©m glossÃ¡rio de KPIs, dicionÃ¡rio de dados, regras de negÃ³cio e informaÃ§Ãµes sobre fontes e limitaÃ§Ãµes.
+A base documental está em `data/knowledge_base/` e contém glossário de KPIs, dicionário de dados, regras de negócio e informações sobre fontes e limitações.
 
-A recuperaÃ§Ã£o utiliza embeddings multilÃ­ngues e FAISS. O projeto inclui expansÃ£o de consultas e recuperaÃ§Ã£o de trechos relevantes. Na verificaÃ§Ã£o, os trechos recuperados sÃ£o separados por documento de origem para que cada afirmaÃ§Ã£o seja comparada com evidÃªncias identificÃ¡veis.
+A recuperação utiliza embeddings multilíngues e FAISS. O projeto inclui expansão de consultas e recuperação de trechos relevantes. Na verificação, os trechos recuperados são separados por documento de origem para que cada afirmação seja comparada com evidências identificáveis.
 
-### MemÃ³ria
+### Memória
 
-A soluÃ§Ã£o contempla memÃ³ria de curto prazo e memÃ³ria de longo prazo:
+A solução contempla memória de curto prazo e memória de longo prazo:
 
-- Na demonstraÃ§Ã£o integrada com Qwen3, o histÃ³rico conversacional mantÃ©m atÃ© oito mensagens anteriores em memÃ³ria RAM e Ã© perdido quando o processo termina.
-- A memÃ³ria de longo prazo Ã© persistida em SQLite e organizada em categorias semÃ¢ntica, episÃ³dica e procedural.
-- A recuperaÃ§Ã£o de longo prazo combina busca lexical normalizada e busca semÃ¢ntica com embeddings e FAISS.
-- Os rankings sÃ£o combinados por Reciprocal Rank Fusion (RRF). O SQLite Ã© a fonte de verdade; o Ã­ndice FAISS Ã© derivado e reconstruÃ­vel.
-- MemÃ³rias pessoais explÃ­citas sÃ£o gravadas quando o usuÃ¡rio utiliza uma solicitaÃ§Ã£o de salvamento, como â€œLembre-se que...â€ ou â€œGuarde na memÃ³ria:...â€.
+- Na demonstração integrada com Qwen3, o histórico conversacional mantém até oito mensagens anteriores em memória RAM e é perdido quando o processo termina.
+- A memória de longo prazo é persistida em SQLite e organizada em categorias semântica, episódica e procedural.
+- A recuperação de longo prazo combina busca lexical normalizada e busca semântica com embeddings e FAISS.
+- Os rankings são combinados por Reciprocal Rank Fusion (RRF). O SQLite é a fonte de verdade; o índice FAISS é derivado e reconstruível.
+- Memórias pessoais explícitas são gravadas quando o usuário utiliza uma solicitação de salvamento, como “Lembre-se que...” ou “Guarde na memória:...”.
 
-O repositÃ³rio tambÃ©m contÃ©m demonstraÃ§Ãµes de estratÃ©gias de persistÃªncia de estado conversacional com LangGraph.
+O repositório também contém demonstrações de estratégias de persistência de estado conversacional com LangGraph.
 
-### VerificaÃ§Ã£o factual
+### Verificação factual
 
-Foi implementado um verificador local de Natural Language Inference (NLI), baseado no modelo multilÃ­ngue `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, executado com Transformers e PyTorch.
+Foi implementado um verificador local de Natural Language Inference (NLI), baseado no modelo multilíngue `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, executado com Transformers e PyTorch.
 
 O fluxo:
 
-- extrai afirmaÃ§Ãµes da resposta;
-- compara cada afirmaÃ§Ã£o com evidÃªncias provenientes das ferramentas;
-- classifica a relaÃ§Ã£o como `APOIA`, `REFUTA` ou `NEUTRA`;
-- aplica verificaÃ§Ãµes auxiliares de consistÃªncia numÃ©rica e coerÃªncia lÃ³gica;
+- extrai afirmações da resposta;
+- compara cada afirmação com evidências provenientes das ferramentas;
+- classifica a relação como `APOIA`, `REFUTA` ou `NEUTRA`;
+- aplica verificações auxiliares de consistência numérica e coerência lógica;
 - produz um veredito geral: `SUSTENTADA`, `REFUTADA`, `INCONCLUSIVA` ou `INCOERENTE`.
 
-Quando a resposta nÃ£o Ã© sustentada, ela nÃ£o Ã© liberada pelo executor. O verificador Ã© uma camada de apoio Ã  validaÃ§Ã£o, nÃ£o uma garantia absoluta de correÃ§Ã£o factual. Os escores do classificador nÃ£o devem ser interpretados automaticamente como probabilidades calibradas.
+Quando a resposta não é sustentada, ela não é liberada pelo executor. O verificador é uma camada de apoio à validação, não uma garantia absoluta de correção factual. Os escores do classificador não devem ser interpretados automaticamente como probabilidades calibradas.
 
-### Observabilidade e avaliaÃ§Ã£o
+### Observabilidade e avaliação
 
-O projeto integra LangSmith para rastreamento e avaliaÃ§Ã£o. O conjunto de avaliaÃ§Ã£o contÃ©m cinco cenÃ¡rios e duas mÃ©tricas: cobertura de termos esperados na resposta (*answer coverage*) e aderÃªncia Ã  trajetÃ³ria/ferramentas esperadas (*trajectory*).
+O projeto integra LangSmith para rastreamento e avaliação. O conjunto de avaliação contém cinco cenários e duas métricas: cobertura de termos esperados na resposta (*answer coverage*) e aderência à trajetória/ferramentas esperadas (*trajectory*).
 
-**LimitaÃ§Ã£o importante:** a avaliaÃ§Ã£o automatizada do agente usa um modelo determinÃ­stico simulado. Os resultados medem o comportamento do fluxo controlado de teste, nÃ£o a qualidade geral ou autonomia de um LLM em produÃ§Ã£o. A demonstraÃ§Ã£o integrada com Qwen3 Ã© executada separadamente, em ambiente local.
+**Limitação importante:** a avaliação automatizada do agente usa um modelo determinístico simulado. Os resultados medem o comportamento do fluxo controlado de teste, não a qualidade geral ou autonomia de um LLM em produção. A demonstração integrada com Qwen3 é executada separadamente, em ambiente local.
 
 ## 4. Tecnologias
 
 - Python 3.12
 - LangChain, LangGraph e LangSmith
-- Ollama e Qwen3 (`qwen3:1.7b`) para a demonstraÃ§Ã£o integrada local
+- Ollama e Qwen3 (`qwen3:1.7b`) para a demonstração integrada local
 - SQLite
 - FAISS
 - Hugging Face Transformers e Sentence Transformers
@@ -125,33 +125,33 @@ O projeto integra LangSmith para rastreamento e avaliaÃ§Ã£o. O conjunto de a
 
 ```text
 business-intelligence-agent/
-â”œâ”€â”€ data/
-â”‚   â”œâ”€â”€ knowledge_base/
-â”‚   â””â”€â”€ sample/
-â”œâ”€â”€ docs/
-â”œâ”€â”€ outputs/
-â”œâ”€â”€ scripts/
-â”œâ”€â”€ src/business_agent/
-â”‚   â”œâ”€â”€ agents/
-â”‚   â”œâ”€â”€ chains/
-â”‚   â”œâ”€â”€ memory/
-â”‚   â”œâ”€â”€ observability/
-â”‚   â”œâ”€â”€ retrieval/
-â”‚   â”œâ”€â”€ tools/
-â”‚   â””â”€â”€ verification/
-â”œâ”€â”€ tests/
-â”œâ”€â”€ .env.example
-â”œâ”€â”€ .gitignore
-â”œâ”€â”€ pyproject.toml
-â”œâ”€â”€ requirements.txt
-â””â”€â”€ README.md
+├── data/
+│   ├── knowledge_base/
+│   └── sample/
+├── docs/
+├── outputs/
+├── scripts/
+├── src/business_agent/
+│   ├── agents/
+│   ├── chains/
+│   ├── memory/
+│   ├── observability/
+│   ├── retrieval/
+│   ├── tools/
+│   └── verification/
+├── tests/
+├── .env.example
+├── .gitignore
+├── pyproject.toml
+├── requirements.txt
+└── README.md
 ```
 
-## 6. ConfiguraÃ§Ã£o do ambiente
+## 6. Configuração do ambiente
 
-Requisitos: Python 3.12, Git, Ollama (para a demonstraÃ§Ã£o integrada com Qwen3) e acesso Ã  internet para instalar dependÃªncias e baixar os modelos do Hugging Face na primeira execuÃ§Ã£o.
+Requisitos: Python 3.12, Git, Ollama (para a demonstração integrada com Qwen3) e acesso à internet para instalar dependências e baixar os modelos do Hugging Face na primeira execução.
 
-No PowerShell, na raiz do repositÃ³rio:
+No PowerShell, na raiz do repositório:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -161,67 +161,67 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-Crie o arquivo local de variÃ¡veis de ambiente:
+Crie o arquivo local de variáveis de ambiente:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Para habilitar o rastreamento remoto, configure `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT` no `.env`. NÃ£o versione nem compartilhe o arquivo `.env` ou suas chaves.
+Para habilitar o rastreamento remoto, configure `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT` no `.env`. Não versione nem compartilhe o arquivo `.env` ou suas chaves.
 
-O script `run_local_openai_tools_agent.py` configura diretamente o endpoint local `http://localhost:11434/v1`, o modelo `qwen3:1.7b` e a chave local de compatibilidade `ollama`. Portanto, essa demonstraÃ§Ã£o nÃ£o precisa de crÃ©ditos nem de uma chave da API OpenAI. As variÃ¡veis `OPENAI_API_KEY` e `OPENAI_MODEL` presentes no `.env.example` sÃ£o usadas por outras demonstraÃ§Ãµes/configuraÃ§Ãµes, nÃ£o pela execuÃ§Ã£o local descrita nesta seÃ§Ã£o.
+O script `run_local_openai_tools_agent.py` configura diretamente o endpoint local `http://localhost:11434/v1`, o modelo `qwen3:1.7b` e a chave local de compatibilidade `ollama`. Portanto, essa demonstração não precisa de créditos nem de uma chave da API OpenAI. As variáveis `OPENAI_API_KEY` e `OPENAI_MODEL` presentes no `.env.example` são usadas por outras demonstrações/configurações, não pela execução local descrita nesta seção.
 
 ### Preparar o Qwen3 no Ollama
 
-Com o Ollama instalado e em execuÃ§Ã£o, baixe o modelo utilizado pelo script:
+Com o Ollama instalado e em execução, baixe o modelo utilizado pelo script:
 
 ```powershell
 ollama pull qwen3:1.7b
 ```
 
-O script espera que o serviÃ§o local do Ollama esteja acessÃ­vel em `http://localhost:11434`. Se alterar o modelo ou endpoint, ajuste a configuraÃ§Ã£o em `scripts/run_local_openai_tools_agent.py`.
+O script espera que o serviço local do Ollama esteja acessível em `http://localhost:11434`. Se alterar o modelo ou endpoint, ajuste a configuração em `scripts/run_local_openai_tools_agent.py`.
 
-## 7. PreparaÃ§Ã£o dos dados e Ã­ndices
+## 7. Preparação dos dados e índices
 
-A base SQLite de vendas de demonstraÃ§Ã£o estÃ¡ em `data/sample/sales.db` e tambÃ©m estÃ¡ versionada no repositÃ³rio. Para recriÃ¡-la:
+A base SQLite de vendas de demonstração está em `data/sample/sales.db` e também está versionada no repositório. Para recriá-la:
 
 ```powershell
 python scripts/setup_data.py
 ```
 
-**AtenÃ§Ã£o:** esse script recria a base de demonstraÃ§Ã£o; alteraÃ§Ãµes locais em `sales.db` podem ser substituÃ­das.
+**Atenção:** esse script recria a base de demonstração; alterações locais em `sales.db` podem ser substituídas.
 
-Para construir o Ã­ndice vetorial da base documental:
+Para construir o índice vetorial da base documental:
 
 ```powershell
 python scripts/build_faiss_index.py
 ```
 
-Na primeira execuÃ§Ã£o, os modelos de embeddings e NLI podem precisar ser baixados do Hugging Face. A inicializaÃ§Ã£o pode levar mais tempo na primeira execuÃ§Ã£o.
+Na primeira execução, os modelos de embeddings e NLI podem precisar ser baixados do Hugging Face. A inicialização pode levar mais tempo na primeira execução.
 
-## 8. Executar demonstraÃ§Ãµes
+## 8. Executar demonstrações
 
-### Agente integrado local: Qwen3 + SQL + RAG + memÃ³ria + NLI
+### Agente integrado local: Qwen3 + SQL + RAG + memória + NLI
 
-Com o ambiente virtual ativado e o Ollama em execuÃ§Ã£o:
+Com o ambiente virtual ativado e o Ollama em execução:
 
 ```powershell
 python scripts/run_local_openai_tools_agent.py
 ```
 
-O programa disponibiliza as ferramentas `sales_monthly_summary`, `business_knowledge_search`, `get_selic_target` e `search_business_memory`. Digite perguntas em portuguÃªs no terminal; digite `sair` para encerrar.
+O programa disponibiliza as ferramentas `sales_monthly_summary`, `business_knowledge_search`, `get_selic_target` e `search_business_memory`. Digite perguntas em português no terminal; digite `sair` para encerrar.
 
 Exemplos de perguntas para demonstrar as rotas:
 
 ```text
-Qual foi a receita lÃ­quida em setembro de 2026?
-Explique a diferenÃ§a entre receita bruta e receita lÃ­quida.
-Qual Ã© a meta Selic mais recente?
-Lembre-se que nosso KPI principal Ã© receita lÃ­quida.
+Qual foi a receita líquida em setembro de 2026?
+Explique a diferença entre receita bruta e receita líquida.
+Qual é a meta Selic mais recente?
+Lembre-se que nosso KPI principal é receita líquida.
 Qual KPI eu mencionei como principal?
 ```
 
-As perguntas quantitativas mensais sÃ£o resolvidas pela rota SQL determinÃ­stica. As perguntas conceituais consultam o RAG antes da geraÃ§Ã£o com Qwen3. A recuperaÃ§Ã£o de memÃ³rias pessoais explÃ­citas Ã© feita diretamente na memÃ³ria persistente. As respostas passam pelo verificador antes de serem liberadas.
+As perguntas quantitativas mensais são resolvidas pela rota SQL determinística. As perguntas conceituais consultam o RAG antes da geração com Qwen3. A recuperação de memórias pessoais explícitas é feita diretamente na memória persistente. As respostas passam pelo verificador antes de serem liberadas.
 
 ### Chains
 
@@ -231,9 +231,9 @@ python scripts/run_initial_chain.py --mode batch
 python scripts/run_initial_chain.py --mode stream
 ```
 
-Os modos demonstrativos utilizam implementaÃ§Ãµes simuladas/determinÃ­sticas; nÃ£o devem ser apresentados como inferÃªncia realizada por um LLM externo.
+Os modos demonstrativos utilizam implementações simuladas/determinísticas; não devem ser apresentados como inferência realizada por um LLM externo.
 
-### Outras demonstraÃ§Ãµes de agentes
+### Outras demonstrações de agentes
 
 ```powershell
 python scripts/run_agent_mock.py
@@ -241,9 +241,9 @@ python scripts/run_react_demo.py
 python scripts/run_legacy_openai_tools_demo.py
 ```
 
-As demonstraÃ§Ãµes de agentes com mock exercitam o fluxo de chamadas de ferramentas sem depender de crÃ©ditos de LLM.
+As demonstrações de agentes com mock exercitam o fluxo de chamadas de ferramentas sem depender de créditos de LLM.
 
-### RAG e memÃ³ria
+### RAG e memória
 
 ```powershell
 python scripts/test_rag_search.py
@@ -258,7 +258,7 @@ python scripts/run_hybrid_memory_demo.py
 python scripts/run_verifier_demo.py
 ```
 
-### IntegraÃ§Ã£o com Banco Central
+### Integração com Banco Central
 
 ```powershell
 python scripts/check_bcb_api.py
@@ -268,7 +268,7 @@ Esse teste consulta a API externa e depende de conectividade.
 
 ## 9. LangSmith
 
-Verificar a configuraÃ§Ã£o:
+Verificar a configuração:
 
 ```powershell
 python scripts/check_langsmith.py
@@ -280,48 +280,47 @@ Executar um rastreamento:
 python scripts/run_langsmith_trace.py
 ```
 
-Executar a avaliaÃ§Ã£o local:
+Executar a avaliação local:
 
 ```powershell
 python scripts/evaluate_business_agent.py
 ```
 
-Enviar o conjunto de avaliaÃ§Ã£o e executar a avaliaÃ§Ã£o remota:
+Enviar o conjunto de avaliação e executar a avaliação remota:
 
 ```powershell
 python scripts/evaluate_business_agent.py --upload
 ```
 
-O resultado local da avaliaÃ§Ã£o Ã© salvo em `outputs/business_agent_evaluation.json`.
+O resultado local da avaliação é salvo em `outputs/business_agent_evaluation.json`.
 
 ## 10. Testes automatizados
 
-Executar a suÃ­te completa:
+Executar a suíte completa:
 
 ```powershell
 python -m pytest -q
 ```
 
-Na Ãºltima validaÃ§Ã£o registrada durante a preparaÃ§Ã£o desta entrega, **112 testes passaram**. A suÃ­te pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciaÃ§Ã£o emitidos por algumas dependÃªncias nÃ£o representaram falhas nessa execuÃ§Ã£o.
+Na última validação registrada durante a preparação desta entrega, **122 testes passaram**. A suíte pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciação emitidos por algumas dependências não representaram falhas nessa execução.
 
-## 11. DocumentaÃ§Ã£o complementar
+## 11. Documentação complementar
 
-A comparaÃ§Ã£o entre frameworks de memÃ³ria estÃ¡ em `docs/COMPARACAO_FRAMEWORKS_MEMORIA.md`. O documento compara SQLite, LangMem e Mem0 e registra os critÃ©rios e decisÃµes arquiteturais adotados.
+A comparação entre frameworks de memória está em `docs/COMPARACAO_FRAMEWORKS_MEMORIA.md`. O documento compara SQLite, LangMem e Mem0 e registra os critérios e decisões arquiteturais adotados.
 
-## 12. LimitaÃ§Ãµes e consideraÃ§Ãµes
+## 12. Limitações e considerações
 
-- Os modelos determinÃ­sticos simulados permitem reproduzir fluxos sem depender de crÃ©ditos de LLM; nÃ£o demonstram autonomia ou qualidade de um modelo generativo real.
-- A avaliaÃ§Ã£o no LangSmith utiliza cinco cenÃ¡rios controlados e nÃ£o representa uma validaÃ§Ã£o abrangente da qualidade de respostas de LLM.
-- A demonstraÃ§Ã£o integrada usa Qwen3 local por meio do Ollama; seu comportamento depende do modelo e dos recursos disponÃ­veis na mÃ¡quina.
-- O histÃ³rico conversacional da demonstraÃ§Ã£o integrada fica em RAM e Ã© perdido ao encerrar o processo; a memÃ³ria de longo prazo Ã© persistida separadamente.
-- RRF combina posiÃ§Ãµes nos rankings e nÃ£o Ã© uma probabilidade de relevÃ¢ncia.
-- Os escores NLI nÃ£o sÃ£o necessariamente probabilidades calibradas.
-- A verificaÃ§Ã£o numÃ©rica Ã© auxiliar e nÃ£o substitui uma validaÃ§Ã£o semÃ¢ntica completa.
-- Algumas demonstraÃ§Ãµes preservam componentes clÃ¡ssicos do LangChain para fins didÃ¡ticos e podem emitir avisos de depreciaÃ§Ã£o.
+- Os modelos determinísticos simulados permitem reproduzir fluxos sem depender de créditos de LLM; não demonstram autonomia ou qualidade de um modelo generativo real.
+- A avaliação no LangSmith utiliza cinco cenários controlados e não representa uma validação abrangente da qualidade de respostas de LLM.
+- A demonstração integrada usa Qwen3 local por meio do Ollama; seu comportamento depende do modelo e dos recursos disponíveis na máquina.
+- O histórico conversacional da demonstração integrada fica em RAM e é perdido ao encerrar o processo; a memória de longo prazo é persistida separadamente.
+- RRF combina posições nos rankings e não é uma probabilidade de relevância.
+- Os escores NLI não são necessariamente probabilidades calibradas.
+- A verificação numérica é auxiliar e não substitui uma validação semântica completa.
+- Algumas demonstrações preservam componentes clássicos do LangChain para fins didáticos e podem emitir avisos de depreciação.
 
 ## 13. Status
 
-A implementaÃ§Ã£o contempla chains, agentes, ferramentas, RAG, memÃ³ria, verificaÃ§Ã£o e observabilidade. A Ãºltima execuÃ§Ã£o da suÃ­te automatizada registrou 112 testes aprovados. A demonstraÃ§Ã£o integrada local tambÃ©m foi validada com uma pergunta conceitual sobre receita bruta e lÃ­quida, com as afirmaÃ§Ãµes apoiadas pelas evidÃªncias recuperadas e veredito geral `SUSTENTADA`.
+A implementação contempla chains, agentes, ferramentas, RAG, memória, verificação e observabilidade. A última execução da suíte automatizada registrou 122 testes aprovados. A demonstração integrada local foi validada com uma pergunta conceitual sobre receita bruta e líquida, com veredito geral `SUSTENTADA`. A ferramenta da API SGS 432 também foi chamada pelo Qwen3 em execução real; a validação completa da resposta dessa rota pelo NLI ainda está em refinamento.
 
-A revisÃ£o final dos requisitos acadÃªmicos, a consolidaÃ§Ã£o do relatÃ³rio e a preparaÃ§Ã£o da apresentaÃ§Ã£o sÃ£o etapas de finalizaÃ§Ã£o da entrega.
-
+A revisão final dos requisitos acadêmicos, a consolidação do relatório e a preparação da apresentação são etapas de finalização da entrega.
