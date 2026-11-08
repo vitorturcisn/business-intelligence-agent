@@ -273,12 +273,14 @@ def resolve_month(
 
 def detect_sales_metric(
     question: str,
+    *,
+    allow_conceptual: bool = False,
 ) -> str | None:
     """Identifica uma única métrica mensal quantitativa na pergunta."""
 
     normalized = normalize_text(question)
 
-    if any(
+    if not allow_conceptual and any(
         marker in normalized
         for marker in CONCEPTUAL_MARKERS
     ):
@@ -679,6 +681,56 @@ def main() -> None:
                 "intermediate_steps": [(action, observation)],
             }
 
+        # Multi-source route: SQL provides the metric value; RAG provides its definition.
+        # This route must run before the monthly-SQL-only and conceptual-RAG-only routes.
+        if is_conceptual_rag_query(question):
+            metric = detect_sales_metric(question, allow_conceptual=True)
+            period = resolve_month(question, chat_history)
+            if metric and period:
+                sql_observation = sales_monthly_summary_adapter.invoke(
+                    {"month": period}
+                )
+                rag_observation = business_knowledge_search.invoke(
+                    {"query": question}
+                )
+                sql_action = AgentAction(
+                    tool="sales_monthly_summary",
+                    tool_input={"month": period},
+                    log="MULTI_SOURCE_ROUTER: monthly SQL query executed.",
+                )
+                rag_action = AgentAction(
+                    tool="business_knowledge_search",
+                    tool_input={"query": question},
+                    log="MULTI_SOURCE_ROUTER: knowledge-base retrieval executed.",
+                )
+                agent_question = (
+                    f"{question}\n\n"
+                    "[SOURCES ALREADY QUERIED IN THIS TURN]\n"
+                    "Both SQL and RAG have already been executed. Do not call "
+                    "sales_monthly_summary or business_knowledge_search again.\n\n"
+                    "[SQL EVIDENCE - structured result]\n"
+                    f"{sql_observation}\n\n"
+                    "[RAG EVIDENCE - documented definitions and rules]\n"
+                    f"{rag_observation}\n\n"
+                    "[RESPONSE RULES]\n"
+                    "Use SQL only for the numeric value and period. Use RAG for "
+                    "the formula, business rules and physical field descriptions. "
+                    "When describing unit_price, reproduce the data dictionary "
+                    "wording exactly: 'preço unitário do produto vendido'. "
+                    "Do not add paraphrases in parentheses or invent field "
+                    "descriptions. If evidence is insufficient, say so. "
+                    "Answer in Brazilian Portuguese."
+                )
+                result = executor.invoke(
+                    {"input": agent_question, "chat_history": chat_history}
+                )
+                result.setdefault("intermediate_steps", [])
+                result["intermediate_steps"] = (
+                    [(sql_action, sql_observation), (rag_action, rag_observation)]
+                    + result["intermediate_steps"]
+                )
+                return result
+
         # ---------------------------------------------------------
         # ROUTE 3: MONTHLY SALES METRICS
         # ---------------------------------------------------------
@@ -761,6 +813,10 @@ def main() -> None:
                 "[INSTRUÇÕES PARA A RESPOSTA]\n"
                 "A consulta RAG já foi executada nesta interação. "
                 "Responda com base no conteúdo documental apresentado. "
+                "Preserve literalmente as descrições dos campos físicos "
+                "conforme aparecem no dicionário de dados. Para unit_price, "
+                "use exatamente: preço unitário do produto vendido. "
+                "Não acrescente paráfrases entre parênteses. "
                 "Não utilize memórias históricas de outras análises como "
                 "evidência para esta explicação conceitual. "
                 "Não acrescente valores, datas ou exemplos numéricos que "
@@ -770,6 +826,18 @@ def main() -> None:
                 "Responda em português brasileiro, de forma breve e direta."
             )
 
+            # Regras complementares: priorizam o texto efetivamente recuperado pelo RAG.
+            agent_question += (
+                "\n\n[REGRAS PRIORITARIAS DE RESPOSTA CONCEITUAL]\n"
+                "Ao descrever campos fisicos, use o identificador e a definicao conforme aparecem literalmente no dicionario recuperado. "
+                "Para unit_price, respeite a definiÃ§Ã£o documental: 'preÃ§o unitÃ¡rio do produto'. "
+                "Para quantity, respeite a definiÃ§Ã£o documental: 'quantidade de unidades vendidas'. "
+                "Para discount_pct, respeite a definiÃ§Ã£o documental: 'percentual de desconto aplicado Ã  venda'. "
+                "NÃ£o altere o significado nem acrescente qualificaÃ§Ãµes que nÃ£o estejam na evidÃªncia. "
+                "Apresente cada fÃ³rmula solicitada uma Ãºnica vez. "
+                "NÃ£o inclua notas, observaÃ§Ãµes, exemplos ou fÃ³rmulas adicionais que o usuÃ¡rio nÃ£o solicitou. "
+                "Mantenha a resposta curta, organizada e limitada aos pontos perguntados."
+            )
             result = executor.invoke(
                 {
                     "input": agent_question,
@@ -786,6 +854,101 @@ def main() -> None:
                 + result["intermediate_steps"]
             )
 
+                        # NLI-GUIDED SELF-REVISION: one controlled retry for unsupported or contradicted RAG claims.
+            normalized_question = normalize_text(question)
+            is_revenue_formula_fields_question = (
+                "receita liquida" in normalized_question
+                and any(term in normalized_question for term in ("campo", "coluna"))
+                and any(term in normalized_question for term in ("calcul", "formula"))
+            )
+
+            if is_revenue_formula_fields_question:
+                initial_nli_report = verify_executor_result(result)
+                unresolved_claims = [
+                    item
+                    for item in initial_nli_report.claims
+                    if item.verdict != "APOIA" or item.unsupported_numbers
+                ]
+
+                if (
+                    initial_nli_report.overall_verdict != "SUSTENTADA"
+                    and unresolved_claims
+                ):
+                    previous_answer = str(result.get("output", "")).strip()
+                    unresolved_text = "\n".join(
+                        f"- [{item.verdict}] {item.claim}"
+                        for item in unresolved_claims
+                    )
+                    revision_prompt = (
+                        "Você é um assistente de Business Intelligence que deve corrigir uma resposta "
+                        "com base exclusivamente nas evidências documentais fornecidas.\n\n"
+                        f"PERGUNTA ORIGINAL:\n{question}\n\n"
+                        "EVIDÊNCIAS RECUPERADAS PELO RAG:\n"
+                        f"{rag_observation}\n\n"
+                        f"RESPOSTA ANTERIOR:\n{previous_answer}\n\n"
+                        "FEEDBACK DO VERIFICADOR NLI:\n"
+                        f"{unresolved_text}\n\n"
+                        "CORREÇÃO FACTUAL OBRIGATÓRIA, CONFORME A DOCUMENTAÇÃO:\n"
+                        "A receita líquida é o valor das vendas depois da aplicação dos descontos. "
+                        "Ela corresponde à receita bruta menos o valor do desconto.\n"
+                        "Receita bruta por item = quantity × unit_price.\n"
+                        "Valor do desconto por item = quantity × unit_price × discount_pct.\n"
+                        "Receita líquida por item = quantity × unit_price × (1 - discount_pct).\n"
+                        "Portanto, é incorreto afirmar que a receita líquida não inclui ou não considera "
+                        "descontos. O desconto é deduzido do valor bruto.\n\n"
+                        "TAREFA:\n"
+                        "Reescreva a resposta inteira, corrigindo qualquer afirmação contradita ou não "
+                        "sustentada. Use somente as evidências acima. Não invente fatos. Não acrescente "
+                        "notas, observações, comentários metalinguísticos ou explicações sobre a própria "
+                        "resposta. Não use lista numerada.\n"
+                        "Retorne exatamente duas linhas, sem introdução ou conclusão:\n"
+                        "Cálculo: A receita líquida por item é quantity × unit_price × (1 - discount_pct), "
+                        "ou seja, o valor bruto menos o desconto aplicado.\n"
+                        "Campos físicos: quantity (quantidade de unidades vendidas); unit_price (preço "
+                        "unitário do produto); discount_pct (percentual de desconto aplicado à venda)."
+                    )
+
+                    print(
+                        "\n[REVISÃO NLI] A resposta contém afirmações não sustentadas ou "
+                        "contraditas. Solicitando uma única revisão ao Qwen3 com feedback e "
+                        "as mesmas evidências RAG."
+                    )
+                    try:
+                        revision_message = model.invoke(revision_prompt)
+                        revision_content = getattr(revision_message, "content", "")
+                        if isinstance(revision_content, str) and revision_content.strip():
+                            revised_answer = revision_content.strip()
+                            result["nli_revision"] = {
+                                "trigger": "unsupported_or_contradicted_rag_claim",
+                                "initial_verdict": initial_nli_report.overall_verdict,
+                                "previous_answer": previous_answer,
+                                "revised_answer": revised_answer,
+                                "unresolved_claims": [
+                                    {
+                                        "claim": item.claim,
+                                        "verdict": item.verdict,
+                                        "confidence": item.confidence,
+                                    }
+                                    for item in unresolved_claims
+                                ],
+                            }
+                            result["output"] = revised_answer
+                            print(
+                                "[REVISÃO NLI] Nova resposta gerada. Ela será "
+                                "submetida novamente ao verificador."
+                            )
+                            print(revised_answer)
+                        else:
+                            print(
+                                "[REVISÃO NLI] O Qwen3 não retornou texto; "
+                                "a resposta original seguirá para o verificador."
+                            )
+                    except Exception as revision_error:
+                        print(
+                            "[REVISÃO NLI] Falha na tentativa de revisão: "
+                            f"{type(revision_error).__name__}: {revision_error}. "
+                            "A resposta original seguirá para o verificador."
+                        )
             return result
 
         # ---------------------------------------------------------

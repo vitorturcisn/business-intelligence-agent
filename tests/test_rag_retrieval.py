@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 
 from langchain_core.documents import Document
 
@@ -151,3 +151,54 @@ def test_transform_query_expands_sales_after_discounts_synonym():
     assert "receita bruta" in result
     assert "discount_pct" in result
 
+
+
+
+def test_transform_query_expands_physical_field_definitions():
+    query = "Quais campos fÃ­sicos da tabela sales sÃ£o utilizados?"
+    result = transform_query(query)
+    assert result != query
+    assert "dicionÃ¡rio de dados" in result
+    assert "quantity" in result
+    assert "unit_price" in result
+    assert "discount_pct" in result
+
+
+def test_search_prioritizes_targeted_field_definition_for_field_questions():
+    field_document = Document(
+        page_content=(
+            "## Colunas\n"
+            "quantity: quantidade de unidades vendidas.\n"
+            "unit_price: preÃ§o unitÃ¡rio do produto.\n"
+            "discount_pct: percentual de desconto aplicado Ã  venda."
+        ),
+        metadata={"source": "02_dicionario_dados.md", "start_index": 0},
+    )
+    distractors = [
+        Document(
+            page_content=f"CÃ¡lculo derivado {index}: quantity Ã— unit_price Ã— discount_pct.",
+            metadata={"source": "02_dicionario_dados.md", "start_index": 100 + index},
+        )
+        for index in range(4)
+    ]
+
+    class TargetedVectorStore:
+        def __init__(self):
+            self.calls = []
+
+        def similarity_search_with_score(self, search_query, k=4):
+            self.calls.append((search_query, k))
+            if "seÃ§Ã£o Colunas" in search_query:
+                return [(field_document, 9.0)]
+            return [(document, 0.01 + index) for index, document in enumerate(distractors[:k])]
+
+    fake_store = TargetedVectorStore()
+    result = search_knowledge_base(
+        "Como Ã© calculada a receita lÃ­quida e quais campos fÃ­sicos da tabela sales sÃ£o utilizados?",
+        vector_store=fake_store,
+        k=4,
+    )
+    assert len(fake_store.calls) == 3
+    assert "quantity: quantidade de unidades vendidas" in result
+    assert "unit_price: preÃ§o unitÃ¡rio do produto" in result
+    assert "discount_pct: percentual de desconto aplicado Ã  venda" in result

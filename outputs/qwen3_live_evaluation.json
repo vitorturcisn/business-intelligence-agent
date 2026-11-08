@@ -1,0 +1,480 @@
+{
+  "generated_at_utc": "2026-11-08T21:59:49.873286+00:00",
+  "dataset": "business-intelligence-agent-qwen3-live-v1",
+  "langsmith_project": "business-intelligence-agent",
+  "model": "qwen3:1.7b",
+  "evaluation_mode": "real_qwen3_local",
+  "total_examples": 6,
+  "results": [
+    {
+      "inputs": {
+        "question": "Qual foi a receita líquida em setembro de 2026?",
+        "scenario": "monthly_sql"
+      },
+      "outputs": {
+        "scenario": "monthly_sql",
+        "answer": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.",
+        "candidate_answer": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.",
+        "tool_names": [
+          "sales_monthly_summary"
+        ],
+        "tool_counts": {
+          "sales_monthly_summary": 1
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "Todas as afirmações foram apoiadas pelas evidências."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.64794921875,
+                  "neutral": 0.3388671875,
+                  "contradiction": 0.01331329345703125
+                },
+                "unsupported_numbers": [],
+                "explanation": "O valor informado (25250.0) coincide com o valor registrado na evidência para a mesma métrica."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "sales_monthly_summary"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          }
+        ]
+      }
+    },
+    {
+      "inputs": {
+        "question": "Quais foram as três categorias com maior receita líquida em setembro de 2026?",
+        "scenario": "text_to_query"
+      },
+      "outputs": {
+        "scenario": "text_to_query",
+        "answer": "Resultado de receita líquida por categoria no período 2026-09: Eletrônicos: R$ 18.335,00; Móveis: R$ 4.410,00; Acessórios: R$ 2.505,00.",
+        "candidate_answer": "Resultado de receita líquida por categoria no período 2026-09: Eletrônicos: R$ 18.335,00; Móveis: R$ 4.410,00; Acessórios: R$ 2.505,00.",
+        "tool_names": [
+          "text_to_query_sales"
+        ],
+        "tool_counts": {
+          "text_to_query_sales": 1
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "A resposta corresponde exatamente aos resultados da consulta SQL validada e executada em modo somente leitura."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "Resultado de receita líquida por categoria no período 2026-09: Eletrônicos: R$ 18.335,00; Móveis: R$ 4.410,00; Acessórios: R$ 2.505,00.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "text_to_query_sales",
+                "scores": {
+                  "deterministic_exact_match": 1.0
+                },
+                "unsupported_numbers": [],
+                "explanation": "A resposta coincide exatamente com a formulação reconstruída a partir do plano validado e das linhas retornadas pelo SQL."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "text_to_query_sales"
+            ],
+            "summary": "A resposta corresponde exatamente aos resultados da consulta SQL validada e executada em modo somente leitura."
+          }
+        ]
+      }
+    },
+    {
+      "inputs": {
+        "question": "Qual é a meta Selic mais recente disponível?",
+        "scenario": "external_api"
+      },
+      "outputs": {
+        "scenario": "external_api",
+        "answer": "A meta Selic mais recente foi de 13,75% a.a., conforme a última observação da série SGS 432 em 2026-11-08.",
+        "candidate_answer": "A meta Selic mais recente foi de 13,75% a.a., conforme a última observação da série SGS 432 em 2026-11-08.",
+        "tool_names": [
+          "get_selic_target"
+        ],
+        "tool_counts": {
+          "get_selic_target": 1
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "Todas as afirmações foram apoiadas pelas evidências."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "A meta Selic mais recente foi de 13,75% a.a., conforme a última observação da série SGS 432 em 2026-11-08.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "get_selic_target",
+                "scores": {
+                  "entailment": 0.97607421875,
+                  "neutral": 0.012969970703125,
+                  "contradiction": 0.0107269287109375
+                },
+                "unsupported_numbers": [],
+                "explanation": "O valor informado (13.75) coincide com o valor registrado na evidência para a mesma métrica."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "get_selic_target"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          }
+        ]
+      }
+    },
+    {
+      "inputs": {
+        "question": "Qual foi a receita líquida em setembro de 2026?",
+        "scenario": "multi_turn_memory",
+        "follow_up_question": "E qual foi a receita bruta desse mesmo período?"
+      },
+      "outputs": {
+        "scenario": "multi_turn_memory",
+        "answer": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.\n\nA receita bruta de setembro de 2026 foi de R$ 26.650,00.",
+        "candidate_answer": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.\n\nA receita bruta de setembro de 2026 foi de R$ 26.650,00.",
+        "tool_names": [
+          "sales_monthly_summary",
+          "sales_monthly_summary"
+        ],
+        "tool_counts": {
+          "sales_monthly_summary": 2
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA",
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "Todas as afirmações foram apoiadas pelas evidências.",
+          "Todas as afirmações foram apoiadas pelas evidências."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "A receita líquida de setembro de 2026 foi de R$ 25.250,00.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.64794921875,
+                  "neutral": 0.3388671875,
+                  "contradiction": 0.01331329345703125
+                },
+                "unsupported_numbers": [],
+                "explanation": "O valor informado (25250.0) coincide com o valor registrado na evidência para a mesma métrica."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "sales_monthly_summary"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          },
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "A receita bruta de setembro de 2026 foi de R$ 26.650,00.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.058868408203125,
+                  "neutral": 0.91455078125,
+                  "contradiction": 0.026458740234375
+                },
+                "unsupported_numbers": [],
+                "explanation": "O valor informado (26650.0) coincide com o valor registrado na evidência para a mesma métrica."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "sales_monthly_summary"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          }
+        ]
+      }
+    },
+    {
+      "inputs": {
+        "question": "Como é calculada a receita líquida e quais campos físicos da tabela sales são utilizados?",
+        "scenario": "rag_conceptual"
+      },
+      "outputs": {
+        "scenario": "rag_conceptual",
+        "answer": "A receita líquida é calculada multiplicando a quantidade vendida (quantity) por preço unitário (unit_price), e depois aplicando o desconto percentual (discount_pct) ao valor bruto. Os campos físicos utilizados são:  \n- **quantity** (unidades vendidas)  \n- **unit_price** (preço unitário)  \n- **discount_pct** (percentual de desconto)  \n\nA receita líquida é obtida pela fórmula:  \n**receita bruta (quantity × unit_price) − (quantity × unit_price × discount_pct)**.",
+        "candidate_answer": "A receita líquida é calculada multiplicando a quantidade vendida (quantity) por preço unitário (unit_price), e depois aplicando o desconto percentual (discount_pct) ao valor bruto. Os campos físicos utilizados são:  \n- **quantity** (unidades vendidas)  \n- **unit_price** (preço unitário)  \n- **discount_pct** (percentual de desconto)  \n\nA receita líquida é obtida pela fórmula:  \n**receita bruta (quantity × unit_price) − (quantity × unit_price × discount_pct)**.",
+        "tool_names": [
+          "business_knowledge_search"
+        ],
+        "tool_counts": {
+          "business_knowledge_search": 1
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "Todas as afirmações foram apoiadas pelas evidências."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "O valor bruto por item corresponde a quantity × unit_price.",
+                "verdict": "APOIA",
+                "confidence": 0.98974609375,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.98974609375,
+                  "neutral": 0.00959014892578125,
+                  "contradiction": 0.0008730888366699219
+                },
+                "unsupported_numbers": [],
+                "explanation": "A fórmula específica documentada sustenta a afirmação."
+              },
+              {
+                "claim": "O valor do desconto por item corresponde a quantity × unit_price × discount_pct.",
+                "verdict": "APOIA",
+                "confidence": 0.99560546875,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.99560546875,
+                  "neutral": 0.003849029541015625,
+                  "contradiction": 0.0004601478576660156
+                },
+                "unsupported_numbers": [],
+                "explanation": "A fórmula específica documentada sustenta a afirmação."
+              },
+              {
+                "claim": "A receita líquida por item corresponde a quantity × unit_price × (1 - discount_pct).",
+                "verdict": "APOIA",
+                "confidence": 0.82568359375,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.82568359375,
+                  "neutral": 0.171142578125,
+                  "contradiction": 0.0028934478759765625
+                },
+                "unsupported_numbers": [],
+                "explanation": "A fórmula específica documentada sustenta a afirmação."
+              },
+              {
+                "claim": "quantity (unidades vendidas).",
+                "verdict": "APOIA",
+                "confidence": 0.98193359375,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.98193359375,
+                  "neutral": 0.011962890625,
+                  "contradiction": 0.00589752197265625
+                },
+                "unsupported_numbers": [],
+                "explanation": "A definição específica do campo no dicionário de dados sustenta a afirmação."
+              },
+              {
+                "claim": "unit_price (preço unitário).",
+                "verdict": "APOIA",
+                "confidence": 0.9482421875,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.9482421875,
+                  "neutral": 0.041748046875,
+                  "contradiction": 0.01016998291015625
+                },
+                "unsupported_numbers": [],
+                "explanation": "A definição específica do campo no dicionário de dados sustenta a afirmação."
+              },
+              {
+                "claim": "discount_pct (percentual de desconto).",
+                "verdict": "APOIA",
+                "confidence": 0.97607421875,
+                "evidence_source": "business_knowledge_search:02_dicionario_dados.md",
+                "scores": {
+                  "entailment": 0.97607421875,
+                  "neutral": 0.0164031982421875,
+                  "contradiction": 0.007549285888671875
+                },
+                "unsupported_numbers": [],
+                "explanation": "A definição específica do campo no dicionário de dados sustenta a afirmação."
+              },
+              {
+                "claim": "receita bruta (quantity × unit_price) − (quantity × unit_price × discount_pct).",
+                "verdict": "APOIA",
+                "confidence": 0.82080078125,
+                "evidence_source": "business_knowledge_search:01_glossario_kpis.md",
+                "scores": {
+                  "entailment": 0.82080078125,
+                  "neutral": 0.0828857421875,
+                  "contradiction": 0.0960693359375
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "business_knowledge_search:01_glossario_kpis.md",
+              "business_knowledge_search:02_dicionario_dados.md",
+              "business_knowledge_search:03_regras_negocio.md"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          }
+        ]
+      }
+    },
+    {
+      "inputs": {
+        "question": "Qual foi a receita líquida em setembro de 2026 e qual é a fórmula para calcular esse indicador?",
+        "scenario": "multi_source"
+      },
+      "outputs": {
+        "scenario": "multi_source",
+        "answer": "A receita líquida em setembro de 2026 foi de **R$25.250,00**.  \n**Fórmula:**  \nReceita líquida = Receita bruta − Descontos  \n(26.650,00 − 1.400,00) = 25.250,00  \n\n**Período:** 2026-09  \n**Moeda:** BRL (Real Brasileiro)  \n\n*Nota: A receita bruta foi de R$26.650,00 e os descontos totais foram de R$1.400,00.*",
+        "candidate_answer": "A receita líquida em setembro de 2026 foi de **R$25.250,00**.  \n**Fórmula:**  \nReceita líquida = Receita bruta − Descontos  \n(26.650,00 − 1.400,00) = 25.250,00  \n\n**Período:** 2026-09  \n**Moeda:** BRL (Real Brasileiro)  \n\n*Nota: A receita bruta foi de R$26.650,00 e os descontos totais foram de R$1.400,00.*",
+        "tool_names": [
+          "sales_monthly_summary",
+          "business_knowledge_search"
+        ],
+        "tool_counts": {
+          "sales_monthly_summary": 1,
+          "business_knowledge_search": 1
+        },
+        "verification_status": "SUSTENTADA",
+        "verification_statuses": [
+          "SUSTENTADA"
+        ],
+        "verification_summaries": [
+          "Todas as afirmações foram apoiadas pelas evidências."
+        ],
+        "verification_reports": [
+          {
+            "overall_verdict": "SUSTENTADA",
+            "claims": [
+              {
+                "claim": "A receita líquida em setembro de 2026 foi de R$25.250,00.",
+                "verdict": "APOIA",
+                "confidence": 1.0,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.744140625,
+                  "neutral": 0.2452392578125,
+                  "contradiction": 0.01045989990234375
+                },
+                "unsupported_numbers": [],
+                "explanation": "O valor informado (25250.0) coincide com o valor registrado na evidência para a mesma métrica."
+              },
+              {
+                "claim": "Receita líquida = Receita bruta − Descontos.",
+                "verdict": "APOIA",
+                "confidence": 0.7587890625,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.7587890625,
+                  "neutral": 0.12286376953125,
+                  "contradiction": 0.11859130859375
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              },
+              {
+                "claim": "(26.650,00 − 1.400,00) = 25.250,00.",
+                "verdict": "APOIA",
+                "confidence": 0.98681640625,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.98681640625,
+                  "neutral": 0.006862640380859375,
+                  "contradiction": 0.00621795654296875
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              },
+              {
+                "claim": "Período: 2026-09.",
+                "verdict": "APOIA",
+                "confidence": 0.9453125,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.9453125,
+                  "neutral": 0.0196990966796875,
+                  "contradiction": 0.035003662109375
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              },
+              {
+                "claim": "Moeda: BRL (Real Brasileiro).",
+                "verdict": "APOIA",
+                "confidence": 0.91064453125,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.91064453125,
+                  "neutral": 0.08734130859375,
+                  "contradiction": 0.0017824172973632812
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              },
+              {
+                "claim": "Nota: A receita bruta foi de R$26.650,00 e os descontos totais foram de R$1.400,00.",
+                "verdict": "APOIA",
+                "confidence": 0.9580078125,
+                "evidence_source": "sales_monthly_summary",
+                "scores": {
+                  "entailment": 0.9580078125,
+                  "neutral": 0.03497314453125,
+                  "contradiction": 0.0070343017578125
+                },
+                "unsupported_numbers": [],
+                "explanation": "A evidência relevante sustenta a afirmação."
+              }
+            ],
+            "coherence_issues": [],
+            "evidence_sources": [
+              "business_knowledge_search:01_glossario_kpis.md",
+              "business_knowledge_search:02_dicionario_dados.md",
+              "business_knowledge_search:03_regras_negocio.md",
+              "sales_monthly_summary"
+            ],
+            "summary": "Todas as afirmações foram apoiadas pelas evidências."
+          }
+        ]
+      }
+    }
+  ],
+  "langsmith_experiment": "<ExperimentResults qwen3-live-agent-evaluation-37b531b2>"
+}

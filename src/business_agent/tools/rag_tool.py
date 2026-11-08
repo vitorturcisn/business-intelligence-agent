@@ -1,4 +1,4 @@
-﻿import unicodedata
+import unicodedata
 from typing import Any
 
 from langchain_core.documents import Document
@@ -13,6 +13,39 @@ def normalize_text(text: str) -> str:
         char for char in text
         if not unicodedata.combining(char)
     )
+
+
+FIELD_DEFINITION_MARKERS = (
+    "quais campos", "quais colunas", "campos fisicos", "colunas fisicas",
+    "dicionario de dados", "campos da tabela", "colunas da tabela",
+    "estrutura da tabela",
+)
+
+FIELD_DEFINITION_SEARCH_QUERY = (
+    "DicionÃ¡rio de dados da tabela sales seÃ§Ã£o Colunas: "
+    "quantity: quantidade de unidades vendidas; "
+    "unit_price: preÃ§o unitÃ¡rio do produto; "
+    "discount_pct: percentual de desconto aplicado Ã  venda"
+)
+
+
+def is_field_definition_query(query: str) -> bool:
+    normalized = normalize_text(query)
+    return any(marker in normalized for marker in FIELD_DEFINITION_MARKERS)
+
+
+def _is_field_definition_chunk(document: Document) -> bool:
+    """Recognize explicit field-definition lines from the data dictionary."""
+    source = normalize_text(str(document.metadata.get("source", "")))
+    if "dicionario_dados" not in source:
+        return False
+    known_fields = {"quantity", "unit_price", "discount_pct"}
+    for line in document.page_content.splitlines():
+        candidate = line.strip().lstrip("-* ").strip().strip("`")
+        field_name, separator, description = candidate.partition(":")
+        if separator and field_name.strip().strip("`") in known_fields and description.strip():
+            return True
+    return False
 
 
 def transform_query(query: str) -> str:
@@ -54,6 +87,12 @@ def transform_query(query: str) -> str:
         expansions.append(
             "receita líquida receita bruta descontos "
             "quantity unit_price discount_pct fórmula"
+        )
+
+    if is_field_definition_query(query):
+        expansions.append(
+            "dicionÃ¡rio de dados tabela sales campos fÃ­sicos colunas "
+            "descriÃ§Ã£o dos campos quantity unit_price discount_pct"
         )
 
     if any(term in normalized for term in [
@@ -125,14 +164,18 @@ def search_knowledge_base(
 
     expanded_query = transform_query(query)
 
-    queries = [query]
+    queries: list[tuple[str, bool]] = [(query, False)]
 
     if expanded_query != query:
-        queries.append(expanded_query)
+        queries.append((expanded_query, False))
+
+    if is_field_definition_query(query):
+        queries.append((FIELD_DEFINITION_SEARCH_QUERY, True))
 
     best_candidates = {}
+    field_definition_candidates = set()
 
-    for search_query in queries:
+    for search_query, is_targeted_search in queries:
         matches = store.similarity_search_with_score(
             search_query,
             k=k,
@@ -145,6 +188,9 @@ def search_knowledge_base(
                 document.page_content,
             )
 
+            if is_targeted_search and _is_field_definition_chunk(document):
+                field_definition_candidates.add(identity)
+
             numeric_distance = float(distance)
 
             if (
@@ -156,10 +202,14 @@ def search_knowledge_base(
                     document,
                 )
 
-    ranked = sorted(
-        best_candidates.values(),
-        key=lambda item: item[0],
-    )[:k]
+    ranked_candidates = list(best_candidates.items())
+    ranked_candidates.sort(
+        key=lambda item: (
+            item[0] not in field_definition_candidates,
+            item[1][0],
+        )
+    )
+    ranked = [candidate for _, candidate in ranked_candidates[:k]]
 
     selected_documents = []
 

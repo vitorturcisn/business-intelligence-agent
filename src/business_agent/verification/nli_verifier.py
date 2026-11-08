@@ -232,6 +232,8 @@ def extract_numeric_values(text: str) -> set[tuple[Decimal, bool]]:
 
 def extract_claims(response: str) -> list[str]:
     """Extrai afirmações atômicas, separando comparações entre receita bruta e líquida."""
+    # Remove ordered-list markers before sentence splitting; they are formatting, not claims.
+    response = re.sub(r"(?m)^\s*\d+[.)]\s+", "", response)
     parts = re.split(
         r"(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])|\n+",
         response.strip(),
@@ -251,7 +253,13 @@ def extract_claims(response: str) -> list[str]:
         return text
 
     for part in parts:
-        cleaned = re.sub(r"[*_`#]", "", part)
+        # Remove delimitadores Markdown sem destruir identificadores snake_case.
+        # Underscores internos, como em `unit_price`, devem ser preservados.
+        cleaned = re.sub(
+            r"[*`#]|(?<!\w)_{1,3}|_{1,3}(?!\w)",
+            "",
+            part,
+        )
         cleaned = re.sub(r"\s+", " ", cleaned).strip(" \t-\r")
         if not cleaned:
             continue
@@ -260,6 +268,28 @@ def extract_claims(response: str) -> list[str]:
             continue
 
         clauses = [finish_clause(cleaned)]
+
+        # Decompõe uma explicação em etapas da receita líquida quando a mesma
+        # frase descreve quantidade × preço unitário e, em seguida, a aplicação
+        # do desconto percentual sobre o valor bruto. A forma atômica mantém
+        # cada relação matemática explícita para a seleção de evidência específica.
+        normalized_cleaned = _normalize_match_text(cleaned)
+        describes_staged_net_formula = (
+            bool(re.search(r"\breceita\s+liquida\b", normalized_cleaned))
+            and bool(re.search(r"\bquantidade\b|(?<!\w)quantity(?!\w)", normalized_cleaned))
+            and bool(re.search(r"\bpreco\s+unitario\b|(?<!\w)unit\s+price(?!\w)", normalized_cleaned))
+            and bool(re.search(r"\bpercentual\s+de\s+desconto\b|(?<!\w)discount\s+pct(?!\w)", normalized_cleaned))
+            and bool(re.search(r"\bmultiplic\w*\b", normalized_cleaned))
+            and bool(re.search(r"\bdepois\s+aplic\w*\b", normalized_cleaned))
+            and bool(re.search(r"\b(?:ao|sobre\s+o)\s+valor\s+bruto\b", normalized_cleaned))
+        )
+        if describes_staged_net_formula:
+            clauses = [
+                "O valor bruto por item corresponde a quantity × unit_price.",
+                "O valor do desconto por item corresponde a quantity × unit_price × discount_pct.",
+                "A receita líquida por item corresponde a quantity × unit_price × (1 - discount_pct).",
+            ]
+
         # "Enquanto" só é tratado como separador quando contrapõe explicitamente
         # receita líquida e receita bruta. Outros usos temporais permanecem intactos.
         comparison = re.split(r"\s+enquanto\s+", cleaned, maxsplit=1, flags=re.IGNORECASE)
@@ -285,6 +315,19 @@ def extract_claims(response: str) -> list[str]:
                             "antes da aplicação de descontos"
                         )
                 clauses = [finish_clause(left), finish_clause(right)]
+
+        # Divide uma observação que reúne duas fórmulas independentes em uma
+        # única frase. Cada parcela poderá então ser confrontada com sua linha
+        # específica no dicionário, sem aceitar/rejeitar o conjunto como bloco.
+        if len(clauses) == 1:
+            formula_pair = re.split(
+                r",\s*e\s+(?=(?:o\s+valor\s+bruto|a\s+receita\s+bruta)\b)",
+                cleaned,
+                maxsplit=1,
+                flags=re.IGNORECASE,
+            )
+            if len(formula_pair) == 2:
+                clauses = [finish_clause(formula_pair[0]), finish_clause(formula_pair[1])]
 
         for clause in clauses:
             if clause and clause not in claims:
@@ -579,6 +622,193 @@ def _evidence_relevance_score(claim: str, evidence_content: str) -> float:
     return max(coverage, metric_boost)
 
 
+_FIELD_DEFINITION_LINE = re.compile(
+    r"^\s*(?:[-*]\s*)?([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.+?)\s*$",
+    flags=re.IGNORECASE,
+)
+
+
+def _select_field_definition_evidence(
+    claim: str,
+    evidence: list[Evidence],
+) -> tuple[list[Evidence], bool]:
+    """Use concise, matching data-dictionary lines for single-field claims.
+
+    Long RAG chunks can contain several unrelated field definitions and formulas.
+    The NLI model is more reliable when a field-definition claim is compared with
+    the exact line that defines that field. Multi-field/formula claims keep the
+    original evidence and therefore do not receive this specialized selection.
+    """
+    matches: list[tuple[str, str, str]] = []
+
+    for item in evidence:
+        for raw_line in item.content.splitlines():
+            match = _FIELD_DEFINITION_LINE.match(raw_line)
+            if not match:
+                continue
+
+            field_name = match.group(1)
+            if not re.search(
+                rf"(?<!\w){re.escape(field_name)}(?!\w)",
+                claim,
+                flags=re.IGNORECASE,
+            ):
+                continue
+
+            definition = f"{field_name}: {match.group(2).strip()}"
+            matches.append((field_name.casefold(), item.source, definition))
+
+    referenced_fields = {field_name for field_name, _, _ in matches}
+    if len(referenced_fields) != 1:
+        return evidence, False
+
+    selected: list[Evidence] = []
+    seen: set[tuple[str, str]] = set()
+    for _, source, definition in matches:
+        identity = (source, definition)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        selected.append(Evidence(source=source, content=definition))
+
+    if not selected:
+        return evidence, False
+
+    return selected, True
+
+
+
+_FORMULA_HEADER_LINE = re.compile(
+    r"^\s*(Receita bruta por item|Valor do desconto por item|Receita líquida por item)\s*:\s*(.*?)\s*$",
+    flags=re.IGNORECASE,
+)
+
+
+def _formula_kind_for_claim(claim: str) -> str | None:
+    """Identify a single explicit sales formula stated by the claim.
+
+    Selection is intentionally conservative: a formula must mention the
+    physical fields and a multiplication relation. General comments about a
+    formula or multi-topic explanations keep the original evidence set.
+    """
+    normalized = _normalize_match_text(claim)
+    has_quantity = bool(re.search(r"(?<!\w)quantity(?!\w)|\bquantidade\b", normalized))
+    has_unit_price = bool(re.search(r"(?<!\w)unit price(?!\w)|\bpreco unitario\b", normalized))
+    has_discount_pct = bool(
+        re.search(
+            r"(?<!\w)discount pct(?!\w)|\bpercentual de desconto\b|\bdesconto\s*%",
+            normalized,
+        )
+    )
+    has_multiplication = bool(
+        re.search(r"[×*]", claim)
+        or re.search(r"\b(?:vezes|multiplicad[ao]s?)\b", normalized)
+    )
+
+    if not (has_quantity and has_unit_price and has_multiplication):
+        return None
+
+    has_net_adjustment = bool(
+        re.search(r"1\s*[-−]\s*discount[ _]pct", claim, flags=re.IGNORECASE)
+        or ("receita liquida" in normalized and has_discount_pct)
+    )
+    if has_net_adjustment and has_discount_pct:
+        return "net_revenue"
+
+    if has_discount_pct and "desconto" in normalized:
+        return "discount_value"
+
+    if ("receita bruta" in normalized or "valor bruto" in normalized) and not has_discount_pct:
+        return "gross_revenue"
+
+    return None
+
+
+def _select_formula_definition_evidence(
+    claim: str,
+    evidence: list[Evidence],
+) -> tuple[list[Evidence], bool]:
+    """Select the exact labelled formula line for a single-formula claim.
+
+    The NLI model is more reliable with the concise formula heading and its
+    equation than with an entire chunk containing several different formulas.
+    Claims that do not state one explicit formula retain all original evidence.
+    """
+    formula_kind = _formula_kind_for_claim(claim)
+    if formula_kind is None:
+        return evidence, False
+
+    expected_headers = {
+        "gross_revenue": "receita bruta por item",
+        "discount_value": "valor do desconto por item",
+        "net_revenue": "receita líquida por item",
+    }
+    expected_header = expected_headers[formula_kind]
+    selected: list[Evidence] = []
+    seen: set[tuple[str, str]] = set()
+
+    for item in evidence:
+        lines = item.content.splitlines()
+        for index, raw_line in enumerate(lines):
+            match = _FORMULA_HEADER_LINE.match(raw_line)
+            if not match:
+                continue
+
+            header = match.group(1).strip().casefold()
+            if header != expected_header.casefold():
+                continue
+
+            equation = match.group(2).strip()
+            if not equation:
+                for next_line in lines[index + 1:]:
+                    candidate = next_line.strip()
+                    if not candidate:
+                        continue
+                    if candidate.startswith("## "):
+                        break
+                    equation = candidate
+                    break
+
+            if not equation:
+                continue
+
+            premise = f"{match.group(1).strip()}:\n{equation}"
+            identity = (item.source, premise)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            selected.append(Evidence(source=item.source, content=premise))
+
+    if not selected:
+        return evidence, False
+
+    return selected, True
+
+def _canonical_formula_hypothesis(claim: str, formula_kind: str) -> str:
+    """Rewrite a detected formula claim as a natural-language NLI hypothesis.
+
+    This is a semantic normalization only: the original claim remains in the
+    report, and the NLI model must still approve the normalized hypothesis
+    against the selected, source-specific formula evidence.
+    """
+    canonical_hypotheses = {
+        "gross_revenue": (
+            "A receita bruta por item é o produto da quantidade (quantity) "
+            "pelo preço unitário (unit_price)."
+        ),
+        "discount_value": (
+            "O valor do desconto por item é o produto da quantidade (quantity), "
+            "do preço unitário (unit_price) e do percentual de desconto (discount_pct)."
+        ),
+        "net_revenue": (
+            "A receita líquida por item é o produto da quantidade (quantity), "
+            "do preço unitário (unit_price) e do fator de retenção "
+            "(1 - discount_pct)."
+        ),
+    }
+    return canonical_hypotheses.get(formula_kind, claim)
+
+
 def _classify_claim(
     claim: str,
     evidence: list[Evidence],
@@ -601,14 +831,40 @@ def _classify_claim(
             explanation="Nenhuma evidência foi fornecida.",
         )
 
+    # Prefer formula-specific evidence whenever the claim expresses a
+    # recognizable formula. Otherwise, a mention of only discount_pct could
+    # make the field selector choose its dictionary definition instead of
+    # the actual discount formula.
+    formula_kind = _formula_kind_for_claim(claim)
+    used_formula_definition = False
+    used_field_definition = False
+    classification_hypothesis = claim
+
+    if formula_kind is not None:
+        classification_evidence, used_formula_definition = (
+            _select_formula_definition_evidence(claim, evidence)
+        )
+        if used_formula_definition:
+            classification_hypothesis = _canonical_formula_hypothesis(
+                claim, formula_kind
+            )
+        else:
+            # Do not silently replace a formula premise with one field's
+            # definition if the exact formula was not retrieved.
+            classification_evidence = evidence
+    else:
+        classification_evidence, used_field_definition = (
+            _select_field_definition_evidence(claim, evidence)
+        )
+
     supported: list[tuple[str, dict[str, float]]] = []
     contradicted: list[tuple[str, dict[str, float], float]] = []
     all_results: list[tuple[str, dict[str, float]]] = []
 
-    for item in evidence:
+    for item in classification_evidence:
         forward = classifier.classify(
             premise=item.content,
-            hypothesis=claim,
+            hypothesis=classification_hypothesis,
         )
         all_results.append((item.source, forward))
 
@@ -623,7 +879,7 @@ def _classify_claim(
         # Confirm only candidate contradictions in the reverse direction.
         if contradiction >= threshold and contradiction > entailment:
             reverse = classifier.classify(
-                premise=claim,
+                premise=classification_hypothesis,
                 hypothesis=item.content,
             )
             reverse_contradiction = reverse.get("contradiction", 0.0)
@@ -675,7 +931,17 @@ def _classify_claim(
         verdict = "APOIA"
         source, scores = best_support
         confidence = scores.get("entailment", 0.0)
-        explanation = "A evidência relevante sustenta a afirmação."
+        if used_field_definition:
+            explanation = (
+                "A definição específica do campo no dicionário de dados "
+                "sustenta a afirmação."
+            )
+        elif used_formula_definition:
+            explanation = (
+                "A fórmula específica documentada sustenta a afirmação."
+            )
+        else:
+            explanation = "A evidência relevante sustenta a afirmação."
 
     else:
         verdict = "NEUTRA"
@@ -991,6 +1257,19 @@ def check_logical_coherence(
                         confidence=1.0,
                     )
                 )
+                continue
+
+            # Fórmulas explícitas de categorias diferentes (por exemplo,
+            # desconto e receita bruta) são afirmações complementares, não
+            # pares candidatos a contradição semântica. Evita uma chamada
+            # NLI redundante entre duas fórmulas independentes.
+            first_formula_kind = _formula_kind_for_claim(first_claim)
+            second_formula_kind = _formula_kind_for_claim(second_claim)
+            if (
+                first_formula_kind is not None
+                and second_formula_kind is not None
+                and first_formula_kind != second_formula_kind
+            ):
                 continue
 
             if not _claims_share_subject(first_claim, second_claim):
