@@ -20,6 +20,10 @@ from business_agent.agents.legacy_openai_tools import (
 )
 from business_agent.agents.query_routing import is_latest_selic_query
 from business_agent.agents.selic_response import build_latest_selic_answer
+from business_agent.agents.text_to_query import (
+    execute_text_to_query,
+    is_dimensional_sales_query,
+)
 from business_agent.memory.short_term import (
     build_agent_with_session_history,
 )
@@ -621,7 +625,62 @@ def main() -> None:
             }
 
         # ---------------------------------------------------------
-        # ROUTE 2: MONTHLY SALES METRICS
+        # ROUTE 2: TEXT-TO-QUERY -> PLANO VALIDADO + SQL READ-ONLY
+        # ---------------------------------------------------------
+        # O Qwen3 escolhe apenas métrica/dimensão/ordenação/limite de um
+        # catálogo fechado. O SQL é compilado pelo código e parametrizado.
+        if is_dimensional_sales_query(question):
+            period = resolve_month(question, chat_history)
+            print(
+                "\n[TEXT-TO-QUERY] Convertendo pergunta em plano analítico validado."
+            )
+            try:
+                query_result = execute_text_to_query(
+                    question=question,
+                    model=model,
+                    period=period,
+                )
+                plan = query_result["plan"]
+                observation = json.dumps(
+                    {
+                        "status": "executed",
+                        "plan": plan,
+                        "period": period,
+                        "rows": query_result["rows"],
+                    },
+                    ensure_ascii=False,
+                    default=str,
+                )
+                answer = query_result["answer"]
+            except (TypeError, ValueError, KeyError, RuntimeError) as exc:
+                observation = json.dumps(
+                    {"status": "rejected", "reason": str(exc)},
+                    ensure_ascii=False,
+                )
+                answer = (
+                    "Não foi possível converter a pergunta em uma consulta "
+                    "segura. Nenhum SQL foi executado. Motivo: "
+                    f"{exc}"
+                )
+                plan = {"question": question}
+
+            action = AgentAction(
+                tool="text_to_query_sales",
+                tool_input=plan,
+                log=(
+                    "TEXT_TO_QUERY_ROUTER: o Qwen3 gerou um plano estruturado; "
+                    "o backend validou os identificadores e compilou SQL "
+                    "somente leitura a partir de um catálogo permitido."
+                ),
+            )
+            return {
+                "input": question,
+                "output": answer,
+                "intermediate_steps": [(action, observation)],
+            }
+
+        # ---------------------------------------------------------
+        # ROUTE 3: MONTHLY SALES METRICS
         # ---------------------------------------------------------
         # SQL remains the source of truth for current quantitative values.
         metric = detect_sales_metric(question)
@@ -668,7 +727,7 @@ def main() -> None:
             }
 
         # ---------------------------------------------------------
-        # ROUTE 3: CONCEPTUAL QUESTIONS -> RAG + QWEN3
+        # ROUTE 4: CONCEPTUAL QUESTIONS -> RAG + QWEN3
         # ---------------------------------------------------------
         # Retrieve the business documentation before invoking the LLM.
         # Do not mix historical memory records into conceptual answers.
@@ -730,7 +789,7 @@ def main() -> None:
             return result
 
         # ---------------------------------------------------------
-        # ROUTE 4: LATEST SELIC -> AGENTEXECUTOR + OFFICIAL BCB API
+        # ROUTE 5: LATEST SELIC -> AGENTEXECUTOR + OFFICIAL BCB API
         # ---------------------------------------------------------
         # A current/latest API request must not inherit unrelated long-term
         # memories (for example, a previously discussed sales month).
@@ -782,7 +841,7 @@ def main() -> None:
             return result
 
         # ---------------------------------------------------------
-        # ROUTE 5: GENERAL QUESTIONS -> HYBRID MEMORY + QWEN3
+        # ROUTE 6: GENERAL QUESTIONS -> HYBRID MEMORY + QWEN3
         # ---------------------------------------------------------
         # Ordinary context questions can use SQLite + FAISS retrieval.
         retrieved_memories = persistent_memory.retrieve(
@@ -1005,6 +1064,12 @@ def main() -> None:
                         print(
                             "Orquestração: roteador conceitual + "
                             "RAG + Qwen3 AgentExecutor"
+                        )
+
+                    elif "TEXT_TO_QUERY_ROUTER" in action_log:
+                        print(
+                            "Orquestração: Qwen3 -> plano estruturado -> "
+                            "SQL validado e somente leitura"
                         )
 
                     elif "DETERMINISTIC_ROUTER" in action_log:

@@ -128,6 +128,74 @@ def get_category_ranking(month: str) -> list[dict[str, Any]]:
     return results
 
 
+# Expressões e dimensões permitidas para o Text-to-query. O modelo escolhe
+# identificadores deste catálogo; nunca fornece SQL executável.
+_BREAKDOWN_METRICS = {
+    "net_revenue": "SUM(quantity * unit_price * (1 - discount_pct))",
+    "gross_revenue": "SUM(quantity * unit_price)",
+    "total_discounts": "SUM(quantity * unit_price * discount_pct)",
+    "order_count": "COUNT(*)",
+    "units_sold": "SUM(quantity)",
+}
+_BREAKDOWN_DIMENSIONS = {
+    "category": "category",
+    "region": "region",
+    "product": "product",
+}
+
+
+def get_sales_breakdown(
+    metric: str,
+    dimension: str,
+    month: str | None = None,
+    sort: str = "desc",
+    limit: int = 5,
+) -> list[dict[str, Any]]:
+    """Executa agregação por dimensão com catálogo fechado e conexão read-only."""
+    if metric not in _BREAKDOWN_METRICS:
+        raise ValueError("Métrica não permitida para consulta dimensional.")
+    if dimension not in _BREAKDOWN_DIMENSIONS:
+        raise ValueError("Dimensão não permitida para consulta dimensional.")
+    if sort not in {"asc", "desc"}:
+        raise ValueError("Ordenação deve ser 'asc' ou 'desc'.")
+    if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 10:
+        raise ValueError("O limite deve ser um inteiro entre 1 e 10.")
+
+    parameters: tuple[Any, ...]
+    where_clause = ""
+    if month is not None:
+        month = _validate_month(month)
+        where_clause = "WHERE substr(sale_date, 1, 7) = ?"
+        parameters = (month, limit)
+    else:
+        parameters = (limit,)
+
+    # Expressão métrica, coluna dimensional e direção vêm exclusivamente
+    # de allow-lists; mês e limite são enviados como parâmetros SQL.
+    query = f"""
+        SELECT
+            {_BREAKDOWN_DIMENSIONS[dimension]} AS dimension,
+            {_BREAKDOWN_METRICS[metric]} AS value
+        FROM sales
+        {where_clause}
+        GROUP BY {_BREAKDOWN_DIMENSIONS[dimension]}
+        ORDER BY value {sort.upper()}, dimension ASC
+        LIMIT ?
+    """
+    rows = _query_database(query, parameters)
+
+    if not rows:
+        period_label = f" para {month}" if month else ""
+        raise ValueError(f"Não existem vendas cadastradas{period_label}.")
+
+    for row in rows:
+        if metric in {"net_revenue", "gross_revenue", "total_discounts"}:
+            row["value"] = round(float(row["value"]), 2)
+        else:
+            row["value"] = int(row["value"])
+    return rows
+
+
 @tool("sales_monthly_summary")
 def sales_monthly_summary(month: str) -> str:
     """Consulta o resumo de vendas de um mês no formato YYYY-MM.

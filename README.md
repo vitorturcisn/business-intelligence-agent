@@ -44,8 +44,9 @@ Na demonstração integrada, o orquestrador aplica rotas determinísticas antes 
 
 1. Perguntas de recordação pessoal consultam diretamente memórias explicitamente salvas.
 2. Perguntas quantitativas mensais são resolvidas por SQL, que permanece como fonte de verdade para os valores.
-3. Perguntas conceituais consultam primeiro a base RAG; as evidências recuperadas são então fornecidas ao Qwen3 para formular a resposta.
-4. Perguntas gerais podem recuperar contexto por meio da busca híbrida de memória antes de chamar o agente.
+3. Perguntas analíticas por categoria, região ou produto são convertidas pelo Qwen3 em um plano estruturado, validado e compilado em SQL parametrizado, executado em modo somente leitura.
+4. Perguntas conceituais consultam primeiro a base RAG; as evidências recuperadas são então fornecidas ao Qwen3 para formular a resposta.
+5. Perguntas gerais podem recuperar contexto por meio da busca híbrida de memória antes de chamar o agente.
 
 As respostas geradas são verificadas contra as observações das ferramentas. A resposta original só é liberada quando o verificador classifica todas as afirmações como sustentadas.
 
@@ -65,7 +66,8 @@ As respostas geradas são verificadas contra as observações das ferramentas. A
 - Demonstração integrada com `create_openai_tools_agent` e `AgentExecutor`.
 - Execução local do Qwen3 por meio da interface compatível com a API da OpenAI fornecida pelo Ollama.
 - Demonstrações adicionais com `create_agent` e ReAct clássico.
-- Ferramenta SQL para consultas somente leitura à base SQLite de vendas.
+- Ferramentas SQL para consultas somente leitura à base SQLite de vendas.
+- Rota Text-to-query para converter perguntas analíticas em planos estruturados validados e consultas SQL parametrizadas por métrica, dimensão, período e limite.
 - Ferramenta RAG para recuperação de conhecimento documental.
 - Ferramenta conectada à API SGS do Banco Central do Brasil, série 432 (Selic).
 - Ferramentas para gravar e recuperar memórias.
@@ -217,6 +219,10 @@ Exemplos de perguntas para demonstrar as rotas:
 Qual foi a receita líquida em setembro de 2026?
 Explique a diferença entre receita bruta e receita líquida.
 Qual é a meta Selic mais recente?
+Compare a receita líquida por categoria em setembro de 2026.
+Quais produtos foram mais vendidos?
+Qual região teve a maior receita bruta em setembro de 2026?
+Mostre as três categorias com maior receita líquida.
 Lembre-se que nosso KPI principal é receita líquida.
 Qual KPI eu mencionei como principal?
 ```
@@ -302,7 +308,7 @@ Executar a suíte completa:
 python -m pytest -q
 ```
 
-Na última validação registrada durante a preparação desta entrega, **127 testes passaram**. A suíte pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciação emitidos por algumas dependências não representaram falhas nessa execução.
+Na última validação registrada durante a preparação desta entrega, **146 testes passaram**. A suíte pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciação emitidos por algumas dependências não representaram falhas nessa execução.
 
 ## 11. Documentação complementar
 
@@ -321,6 +327,6 @@ A comparação entre frameworks de memória está em `docs/COMPARACAO_FRAMEWORKS
 
 ## 13. Status
 
-A implementação contempla chains, agentes, ferramentas, RAG, memória, verificação e observabilidade. A última execução da suíte automatizada registrou 127 testes aprovados. A demonstração integrada local foi validada com uma pergunta conceitual sobre receita bruta e líquida, com veredito geral `SUSTENTADA`. A integração com a API oficial do Banco Central, série SGS 432, também foi validada em execução real: o Qwen3 realizou o tool calling, a resposta foi montada a partir da última observação retornada pela API e o verificador NLI produziu o veredito `SUSTENTADA`.
+A implementação contempla chains, agentes, ferramentas, RAG, memória, verificação e observabilidade. A última execução da suíte automatizada registrou 146 testes aprovados. A demonstração integrada local foi validada com uma pergunta conceitual sobre receita bruta e líquida, com veredito geral `SUSTENTADA`. A integração com a API oficial do Banco Central, série SGS 432, também foi validada em execução real: o Qwen3 realizou o tool calling, a resposta foi montada a partir da última observação retornada pela API e o verificador NLI produziu o veredito `SUSTENTADA`. O fluxo Text-to-query também foi validado em quatro perguntas analíticas envolvendo receita líquida por categoria, unidades por produto, receita bruta por região e ranking das três principais categorias; as quatro respostas coincidiram exatamente com os resultados SQL e receberam veredito `SUSTENTADA`.
 
 A revisão final dos requisitos acadêmicos, a consolidação do relatório e a preparação da apresentação são etapas de finalização da entrega.

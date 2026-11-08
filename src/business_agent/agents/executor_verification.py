@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from typing import Any
 
 from business_agent.verification.nli_verifier import (
+    ClaimAssessment,
     Evidence,
     LocalNLIClassifier,
     NLIClassifier,
@@ -105,6 +107,97 @@ def extract_executor_evidence(
     return evidence
 
 
+
+def _verify_text_to_query_exact_match(
+    result: dict[str, Any],
+) -> VerificationReport | None:
+    """Verify Text-to-query output against its exact structured SQL result.
+
+    This specialized path does not waive verification: it revalidates the
+    allow-listed plan, validates the returned rows, reconstructs the canonical
+    answer, and approves only an exact string match. Any mismatch falls back
+    to the ordinary NLI verifier.
+    """
+    from business_agent.agents.text_to_query import (
+        build_query_answer,
+        parse_query_plan,
+    )
+
+    matching_steps = []
+    for step in result.get("intermediate_steps", []):
+        if not isinstance(step, (tuple, list)) or len(step) != 2:
+            continue
+        action, observation = step
+        if getattr(action, "tool", None) == "text_to_query_sales":
+            matching_steps.append(observation)
+
+    if len(matching_steps) != 1:
+        return None
+
+    try:
+        raw = matching_steps[0]
+        payload = raw if isinstance(raw, dict) else json.loads(_to_text(raw))
+        if not isinstance(payload, dict) or payload.get("status") != "executed":
+            return None
+
+        raw_plan = payload.get("plan")
+        plan = parse_query_plan(json.dumps(raw_plan, ensure_ascii=False))
+
+        period = payload.get("period")
+        if period is not None and (
+            not isinstance(period, str)
+            or not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", period)
+        ):
+            return None
+
+        rows = payload.get("rows")
+        if not isinstance(rows, list) or len(rows) > plan["limit"]:
+            return None
+
+        for row in rows:
+            if not isinstance(row, dict):
+                return None
+            dimension_value = row.get("dimension")
+            metric_value = row.get("value")
+            if not isinstance(dimension_value, str) or not dimension_value.strip():
+                return None
+            if isinstance(metric_value, bool) or not isinstance(metric_value, (int, float)):
+                return None
+            if not math.isfinite(float(metric_value)):
+                return None
+
+        expected_answer = build_query_answer(plan, rows, period)
+        answer = result.get("output")
+        if not isinstance(answer, str) or answer.strip() != expected_answer:
+            return None
+
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
+        return None
+
+    assessment = ClaimAssessment(
+        claim=answer.strip(),
+        verdict="APOIA",
+        confidence=1.0,
+        evidence_source="text_to_query_sales",
+        scores={"deterministic_exact_match": 1.0},
+        unsupported_numbers=[],
+        explanation=(
+            "A resposta coincide exatamente com a formulação reconstruída "
+            "a partir do plano validado e das linhas retornadas pelo SQL."
+        ),
+    )
+    return VerificationReport(
+        overall_verdict="SUSTENTADA",
+        claims=[assessment],
+        coherence_issues=[],
+        evidence_sources=["text_to_query_sales"],
+        summary=(
+            "A resposta corresponde exatamente aos resultados da consulta "
+            "SQL validada e executada em modo somente leitura."
+        ),
+    )
+
+
 def verify_executor_result(
     result: dict[str, Any],
     classifier: NLIClassifier | None = None,
@@ -114,6 +207,10 @@ def verify_executor_result(
 
     if not isinstance(answer, str) or not answer.strip():
         raise ValueError("O executor não retornou uma resposta válida.")
+
+    text_to_query_report = _verify_text_to_query_exact_match(result)
+    if text_to_query_report is not None:
+        return text_to_query_report
 
     evidence = extract_executor_evidence(result)
 

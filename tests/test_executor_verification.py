@@ -141,3 +141,74 @@ def test_rag_tool_observation_is_split_per_document():
     assert evidence[1].source == "business_knowledge_search:02_dicionario_dados.md"
     assert "Resultado 2" not in evidence[0].content
     assert "quantity × unit_price" in evidence[1].content
+
+
+def _build_text_to_query_result(answer_override=None):
+    import json
+
+    from business_agent.agents.text_to_query import build_query_answer
+
+    plan = {
+        "metric": "net_revenue",
+        "dimension": "category",
+        "sort": "desc",
+        "limit": 3,
+    }
+    rows = [
+        {"dimension": "Eletrônicos", "value": 18335.0},
+        {"dimension": "Móveis", "value": 4410.0},
+        {"dimension": "Acessórios", "value": 2505.0},
+    ]
+    answer = build_query_answer(plan, rows, "2026-09")
+    if answer_override is not None:
+        answer = answer_override
+
+    action = SimpleNamespace(tool="text_to_query_sales")
+    observation = json.dumps(
+        {
+            "status": "executed",
+            "plan": plan,
+            "period": "2026-09",
+            "rows": rows,
+        },
+        ensure_ascii=False,
+    )
+    return {"output": answer, "intermediate_steps": [(action, observation)]}
+
+
+def test_text_to_query_exact_sql_answer_is_approved_without_general_nli():
+    class UnexpectedNLI:
+        def classify(self, premise: str, hypothesis: str):
+            raise AssertionError("Exact SQL response should use deterministic verification.")
+
+    result = _build_text_to_query_result()
+    report = verify_executor_result(result, classifier=UnexpectedNLI())
+
+    assert report.overall_verdict == "SUSTENTADA"
+    assert report.claims[0].verdict == "APOIA"
+    assert report.claims[0].evidence_source == "text_to_query_sales"
+    assert render_verified_answer(result, report) == result["output"]
+
+
+def test_text_to_query_modified_answer_does_not_receive_exact_approval():
+    canonical = _build_text_to_query_result()["output"]
+    modified = canonical.replace("18.335,00", "18.999,00")
+    result = _build_text_to_query_result(answer_override=modified)
+
+    report = verify_executor_result(result, classifier=FakeNLIClassifier())
+
+    assert report.overall_verdict != "SUSTENTADA"
+
+
+def test_text_to_query_invalid_plan_does_not_receive_exact_approval():
+    import json
+
+    result = _build_text_to_query_result()
+    action, raw_observation = result["intermediate_steps"][0]
+    payload = json.loads(raw_observation)
+    payload["plan"]["metric"] = "arbitrary_sql"
+    result["intermediate_steps"] = [(action, json.dumps(payload))]
+
+    report = verify_executor_result(result, classifier=FakeNLIClassifier())
+
+    assert report.overall_verdict != "SUSTENTADA"
