@@ -16,6 +16,7 @@ from business_agent.verification.nli_verifier import (
 _RAG_BLOCK_SEPARATOR = re.compile(r"\r?\n\s*---\s*\r?\n")
 _RAG_SOURCE_PATTERN = re.compile(r"(?m)^Fonte:[ \t]*(.+?)[ \t]*$")
 _RAG_CONTENT_PATTERN = re.compile(r"(?ms)^Conteúdo:[ \t]*\r?\n(.*)$")
+_MEMORY_TOOL_NAMES = {"persistent_memory_search", "search_business_memory"}
 
 
 def _to_text(value: Any) -> str:
@@ -61,8 +62,19 @@ def extract_executor_evidence(
 ) -> list[Evidence]:
     """Extract tool evidence, splitting RAG results by document/source."""
     evidence: list[Evidence] = []
+    steps = result.get("intermediate_steps", [])
 
-    for step in result.get("intermediate_steps", []):
+    # Memórias recuperadas ajudam a contextualizar a geração. Porém, quando
+    # SQL/RAG/API também forneceu uma fonte específica para a resposta, não
+    # devem competir como evidência factual daquela fonte.
+    has_domain_tool_evidence = any(
+        isinstance(step, (tuple, list))
+        and len(step) == 2
+        and str(getattr(step[0], "tool", "unknown_tool")) not in _MEMORY_TOOL_NAMES
+        for step in steps
+    )
+
+    for step in steps:
         if not isinstance(step, (tuple, list)) or len(step) != 2:
             continue
 
@@ -73,6 +85,9 @@ def extract_executor_evidence(
             continue
 
         source = str(getattr(action, "tool", "unknown_tool"))
+
+        if source in _MEMORY_TOOL_NAMES and has_domain_tool_evidence:
+            continue
 
         if source == "business_knowledge_search":
             rag_documents = _split_rag_documents(content)

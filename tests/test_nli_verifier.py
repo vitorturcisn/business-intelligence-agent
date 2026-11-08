@@ -1,3 +1,5 @@
+import json
+
 from business_agent.verification.nli_verifier import (
     Evidence,
     extract_claims,
@@ -110,6 +112,53 @@ def test_unsupported_numeric_value_is_flagged():
 
     assert report.claims[0].unsupported_numbers
     assert report.claims[0].verdict == "REFUTA"
+
+
+def test_bcb_selic_percentage_matches_structured_api_evidence():
+    evidence = Evidence(
+        source="get_selic_target",
+        content=json.dumps({
+            "series_code": 432,
+            "latest_observation": {
+                "date": "2026-11-07",
+                "value": 13.75,
+                "unit": "% a.a.",
+            },
+        }),
+    )
+
+    report = verify_claims(
+        claims=["A meta Selic mais recente é 13,75% ao ano."],
+        evidence=[evidence],
+        classifier=FakeNLIClassifier(),
+    )
+
+    assert report.claims[0].verdict == "APOIA"
+    assert report.claims[0].unsupported_numbers == []
+    assert report.overall_verdict == "SUSTENTADA"
+
+
+def test_bcb_selic_percentage_conflict_is_rejected():
+    evidence = Evidence(
+        source="get_selic_target",
+        content=json.dumps({
+            "series_code": 432,
+            "latest_observation": {
+                "date": "2026-11-07",
+                "value": 13.75,
+                "unit": "% a.a.",
+            },
+        }),
+    )
+
+    report = verify_claims(
+        claims=["A meta Selic mais recente é 13,50% ao ano."],
+        evidence=[evidence],
+        classifier=FakeNLIClassifier(),
+    )
+
+    assert report.claims[0].verdict == "REFUTA"
+    assert report.overall_verdict == "REFUTADA"
 
 
 def test_missing_evidence_produces_neutral_verdict():

@@ -169,6 +169,9 @@ _METRIC_ALIASES = {
         "total de pedidos", "total pedidos", "pedidos", "pedido",
         "order count", "order_count",
     ),
+    "selic_target": (
+        "meta selic", "taxa selic", "selic",
+    ),
 }
 
 _MONTHS = {
@@ -389,6 +392,16 @@ def _extract_metric_facts(item: Evidence) -> list[tuple[str, Decimal, str | None
         payload = None
 
     if payload is not None:
+        # A API SGS 432 retorna a taxa em latest_observation.value e informa
+        # a unidade percentual em latest_observation.unit, não no nome da chave.
+        if item.source == "get_selic_target" and isinstance(payload, dict):
+            latest = payload.get("latest_observation")
+            if isinstance(latest, dict) and "value" in latest:
+                parsed_selic = _parse_number(str(latest["value"]))
+                unit = str(latest.get("unit", ""))
+                if parsed_selic is not None and "%" in unit:
+                    facts.append(("selic_target", parsed_selic[0], None))
+
         walk_json(payload)
         # Para JSON, as chaves já identificam precisamente cada métrica.
         # Não aplicamos a busca textual ampla ao mesmo conteúdo, pois ela
@@ -437,6 +450,13 @@ def _claim_metric_values(claim: str, metric: str) -> set[Decimal]:
     unidades) aceitam números inteiros sem moeda, removendo antes o período
     expresso na própria frase.
     """
+    if metric == "selic_target":
+        return {
+            value
+            for value, is_percentage in extract_numeric_values(claim)
+            if is_percentage
+        }
+
     if metric in {"net_revenue", "gross_revenue", "total_discounts"}:
         values: set[Decimal] = set()
         for raw in CURRENCY_PATTERN.findall(claim):
@@ -681,6 +701,23 @@ def _classify_claim(
 
     for item in evidence:
         available_numbers.update(extract_numeric_values(item.content))
+
+        # No JSON do BCB, 13.75 é um número sem sufixo percentual; a unidade
+        # "% a.a." vem em outro campo. Normalize-o para comparar com "13,75%".
+        if item.source == "get_selic_target":
+            try:
+                bcb_payload = json.loads(item.content)
+            except (json.JSONDecodeError, TypeError):
+                bcb_payload = None
+            latest = (
+                bcb_payload.get("latest_observation")
+                if isinstance(bcb_payload, dict)
+                else None
+            )
+            if isinstance(latest, dict) and "%" in str(latest.get("unit", "")):
+                parsed_selic = _parse_number(str(latest.get("value", "")))
+                if parsed_selic is not None:
+                    available_numbers.add((parsed_selic[0], True))
 
     missing_numbers = claim_numbers - available_numbers
 

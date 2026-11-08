@@ -83,6 +83,36 @@ def test_contradicted_executor_answer_is_blocked():
 
 
 
+def test_memory_is_not_factual_evidence_when_external_tool_also_runs():
+    memory_action = SimpleNamespace(tool="persistent_memory_search")
+    api_action = SimpleNamespace(tool="get_selic_target")
+    result = {
+        "output": "A meta Selic mais recente é 13,75% ao ano.",
+        "intermediate_steps": [
+            (memory_action, "Memória antiga sobre receita líquida e vendas."),
+            (api_action, '{"latest_observation":{"value":13.75,"unit":"% a.a."}}'),
+        ],
+    }
+
+    evidence = extract_executor_evidence(result)
+
+    assert len(evidence) == 1
+    assert evidence[0].source == "get_selic_target"
+
+
+def test_memory_remains_evidence_when_no_external_tool_runs():
+    memory_action = SimpleNamespace(tool="persistent_memory_search")
+    result = {
+        "output": "O KPI principal é receita líquida.",
+        "intermediate_steps": [(memory_action, "KPI principal: receita líquida.")],
+    }
+
+    evidence = extract_executor_evidence(result)
+
+    assert len(evidence) == 1
+    assert evidence[0].source == "persistent_memory_search"
+
+
 def test_rag_tool_observation_is_split_per_document():
     action = SimpleNamespace(tool="business_knowledge_search")
     observation = (

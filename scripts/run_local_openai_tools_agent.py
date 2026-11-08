@@ -18,6 +18,8 @@ from business_agent.agents.executor_verification import (
 from business_agent.agents.legacy_openai_tools import (
     build_legacy_openai_tools_executor,
 )
+from business_agent.agents.query_routing import is_latest_selic_query
+from business_agent.agents.selic_response import build_latest_selic_answer
 from business_agent.memory.short_term import (
     build_agent_with_session_history,
 )
@@ -728,7 +730,59 @@ def main() -> None:
             return result
 
         # ---------------------------------------------------------
-        # ROUTE 4: GENERAL QUESTIONS -> HYBRID MEMORY + QWEN3
+        # ROUTE 4: LATEST SELIC -> AGENTEXECUTOR + OFFICIAL BCB API
+        # ---------------------------------------------------------
+        # A current/latest API request must not inherit unrelated long-term
+        # memories (for example, a previously discussed sales month).
+        # The LLM still performs the real get_selic_target tool call.
+        if is_latest_selic_query(question):
+            print(
+                "\n[ROTEADOR API EXTERNA] Consulta da última observação Selic; "
+                "ignorando memórias persistentes não relacionadas."
+            )
+
+            api_question = (
+                f"{question}\n\n"
+                "[INSTRUÇÕES OBRIGATÓRIAS PARA A API SGS 432]\n"
+                "Esta pergunta solicita a observação mais recente disponível. "
+                "Chame get_selic_target exatamente uma vez, sem informar "
+                "start_date ou end_date (use os parâmetros padrão). Não faça "
+                "uma segunda chamada para um mês ou intervalo histórico, a "
+                "menos que o usuário tenha solicitado explicitamente esse "
+                "período. Na resposta, use exclusivamente os campos "
+                "latest_observation.date e latest_observation.value do retorno "
+                "dessa chamada. Não substitua a última observação por uma "
+                "data encontrada no histórico da conversa ou em memória "
+                "persistente. Informe a taxa em percentual ao ano."
+            )
+
+            result = executor.invoke(
+                {
+                    "input": api_question,
+                    # "Mais recente" é uma consulta absoluta; não herdar
+                    # períodos de turnos anteriores.
+                    "chat_history": [],
+                }
+            )
+
+            # O Qwen3 continua responsável pelo tool calling real. Depois da
+            # execução, a resposta final é montada diretamente dos campos
+            # latest_observation retornados pela API, sem nova geração livre.
+            try:
+                result["output"] = build_latest_selic_answer(
+                    result.get("intermediate_steps", [])
+                )
+            except (TypeError, ValueError, KeyError) as exc:
+                result["output"] = (
+                    "Não foi possível confirmar a última observação da Selic "
+                    "a partir de uma única resposta válida da ferramenta "
+                    f"get_selic_target ({exc})."
+                )
+
+            return result
+
+        # ---------------------------------------------------------
+        # ROUTE 5: GENERAL QUESTIONS -> HYBRID MEMORY + QWEN3
         # ---------------------------------------------------------
         # Ordinary context questions can use SQLite + FAISS retrieval.
         retrieved_memories = persistent_memory.retrieve(

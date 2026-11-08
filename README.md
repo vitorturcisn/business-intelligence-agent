@@ -302,7 +302,7 @@ Executar a suíte completa:
 python -m pytest -q
 ```
 
-Na última validação registrada durante a preparação desta entrega, **122 testes passaram**. A suíte pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciação emitidos por algumas dependências não representaram falhas nessa execução.
+Na última validação registrada durante a preparação desta entrega, **127 testes passaram**. A suíte pode mudar conforme novas funcionalidades e testes forem adicionados. Os avisos de depreciação emitidos por algumas dependências não representaram falhas nessa execução.
 
 ## 11. Documentação complementar
 
@@ -321,6 +321,6 @@ A comparação entre frameworks de memória está em `docs/COMPARACAO_FRAMEWORKS
 
 ## 13. Status
 
-A implementação contempla chains, agentes, ferramentas, RAG, memória, verificação e observabilidade. A última execução da suíte automatizada registrou 122 testes aprovados. A demonstração integrada local foi validada com uma pergunta conceitual sobre receita bruta e líquida, com veredito geral `SUSTENTADA`. A ferramenta da API SGS 432 também foi chamada pelo Qwen3 em execução real; a validação completa da resposta dessa rota pelo NLI ainda está em refinamento.
+A implementação contempla chains, agentes, ferramentas, RAG, memória, verificação e observabilidade. A última execução da suíte automatizada registrou 127 testes aprovados. A demonstração integrada local foi validada com uma pergunta conceitual sobre receita bruta e líquida, com veredito geral `SUSTENTADA`. A integração com a API oficial do Banco Central, série SGS 432, também foi validada em execução real: o Qwen3 realizou o tool calling, a resposta foi montada a partir da última observação retornada pela API e o verificador NLI produziu o veredito `SUSTENTADA`.
 
 A revisão final dos requisitos acadêmicos, a consolidação do relatório e a preparação da apresentação são etapas de finalização da entrega.

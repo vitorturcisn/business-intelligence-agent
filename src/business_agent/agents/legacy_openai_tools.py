@@ -188,7 +188,12 @@ def build_legacy_openai_tools_executor(
                 "",
                 "EXEMPLO 4 - API EXTERNA:",
                 "Pergunta: Qual é a meta Selic mais recente?",
-                "Ação obrigatória: chamar get_selic_target.",
+                "Ação obrigatória: chamar get_selic_target uma única vez, "
+                "sem start_date/end_date, para obter a janela padrão.",
+                "Use latest_observation.date e latest_observation.value "
+                "do retorno dessa chamada.",
+                "Não faça uma segunda consulta histórica se o usuário não "
+                "solicitou explicitamente outro período.",
                 "Não responda usando apenas conhecimento prévio.",
             ]
         )
@@ -237,6 +242,19 @@ def build_legacy_openai_tools_executor(
             "para métricas atuais, consulte as ferramentas SQL.",
             "- Não afirme que uma memória foi salva; a gravação só "
             "ocorre quando o usuário solicita explicitamente.",
+            "",
+            "# REGRAS ESPECÍFICAS DA API SELIC (SGS 432)",
+            "- Quando o usuário pedir a meta Selic mais recente, última observação "
+            "ou taxa atual, chame get_selic_target uma única vez sem informar "
+            "start_date/end_date.",
+            "- Nessa consulta, use exclusivamente latest_observation.date e "
+            "latest_observation.value do retorno da chamada.",
+            "- Não faça uma segunda consulta para um mês ou intervalo histórico, "
+            "a menos que o usuário tenha solicitado explicitamente esse período.",
+            "- Não herde períodos de vendas, datas ou valores de memórias antigas "
+            "para responder uma consulta da última observação Selic.",
+            "- Para uma consulta histórica com período explicitamente informado, "
+            "passe as datas solicitadas à ferramenta.",
             "",
             "# REGRAS PARA MÚLTIPLAS FONTES",
             "- Se a pergunta pedir um valor quantitativo e também sua "
