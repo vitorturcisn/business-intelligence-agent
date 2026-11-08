@@ -1,0 +1,769 @@
+{
+  "generated_at_utc": "2026-11-08T17:52:04.783076+00:00",
+  "index_path": "data/indexes/business_knowledge_faiss",
+  "index_rebuilt": false,
+  "evaluation_level": "document/source; duplicate chunks from the same source are counted once",
+  "k": 4,
+  "number_of_questions": 14,
+  "metric_definitions": {
+    "precision_at_k": "proporção de fontes relevantes entre as k posições; fontes repetidas são contadas uma vez",
+    "recall_at_k": "proporção das fontes relevantes esperadas recuperadas nas k posições",
+    "mrr": "recíproco da posição da primeira fonte relevante; zero quando nenhuma fonte relevante aparece"
+  },
+  "summary": {
+    "original": {
+      "precision_at_k": 0.4642857142857143,
+      "recall_at_k": 0.9761904761904762,
+      "mrr": 0.9642857142857143
+    },
+    "expanded": {
+      "precision_at_k": 0.48214285714285715,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    "hybrid": {
+      "precision_at_k": 0.48214285714285715,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    }
+  },
+  "hybrid_minus_original": {
+    "precision_at_k": 0.01785714285714285,
+    "recall_at_k": 0.023809523809523836,
+    "mrr": 0.0357142857142857
+  },
+  "details": [
+    {
+      "question_id": "RAG-01",
+      "question": "Como calcular a receita bruta por item antes dos descontos?",
+      "expanded_query": "Como calcular a receita bruta por item antes dos descontos?",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-01",
+      "question": "Como calcular a receita bruta por item antes dos descontos?",
+      "expanded_query": "Como calcular a receita bruta por item antes dos descontos?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-01",
+      "question": "Como calcular a receita bruta por item antes dos descontos?",
+      "expanded_query": "Como calcular a receita bruta por item antes dos descontos?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-02",
+      "question": "Como descobrir o faturamento após os descontos?",
+      "expanded_query": "Como descobrir o faturamento após os descontos?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 0.6666666666666666,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-02",
+      "question": "Como descobrir o faturamento após os descontos?",
+      "expanded_query": "Como descobrir o faturamento após os descontos?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-02",
+      "question": "Como descobrir o faturamento após os descontos?",
+      "expanded_query": "Como descobrir o faturamento após os descontos?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-03",
+      "question": "Qual é a fórmula da receita líquida para cada item vendido?",
+      "expanded_query": "Qual é a fórmula da receita líquida para cada item vendido?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-03",
+      "question": "Qual é a fórmula da receita líquida para cada item vendido?",
+      "expanded_query": "Qual é a fórmula da receita líquida para cada item vendido?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-03",
+      "question": "Qual é a fórmula da receita líquida para cada item vendido?",
+      "expanded_query": "Qual é a fórmula da receita líquida para cada item vendido?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-04",
+      "question": "Quais campos da tabela sales são necessários para calcular a receita líquida?",
+      "expanded_query": "Quais campos da tabela sales são necessários para calcular a receita líquida?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "original",
+      "gold_sources": [
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-04",
+      "question": "Quais campos da tabela sales são necessários para calcular a receita líquida?",
+      "expanded_query": "Quais campos da tabela sales são necessários para calcular a receita líquida?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "expanded",
+      "gold_sources": [
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-04",
+      "question": "Quais campos da tabela sales são necessários para calcular a receita líquida?",
+      "expanded_query": "Quais campos da tabela sales são necessários para calcular a receita líquida?\n\nConceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-05",
+      "question": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?",
+      "expanded_query": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?\n\nConceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-05",
+      "question": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?",
+      "expanded_query": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?\n\nConceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-05",
+      "question": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?",
+      "expanded_query": "Qual a diferença entre quantidade de produtos vendida e número de pedidos?\n\nConceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-06",
+      "question": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "expanded_query": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-06",
+      "question": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "expanded_query": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-06",
+      "question": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "expanded_query": "Como contar pedidos sem confundir com as unidades comercializadas?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "02_dicionario_dados.md",
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.75,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-07",
+      "question": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "expanded_query": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-07",
+      "question": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "expanded_query": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-07",
+      "question": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "expanded_query": "Como comparar o faturamento de setembro de 2026 com agosto de 2026?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-08",
+      "question": "O que significa variação percentual em uma comparação entre meses?",
+      "expanded_query": "O que significa variação percentual em uma comparação entre meses?",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-08",
+      "question": "O que significa variação percentual em uma comparação entre meses?",
+      "expanded_query": "O que significa variação percentual em uma comparação entre meses?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-08",
+      "question": "O que significa variação percentual em uma comparação entre meses?",
+      "expanded_query": "O que significa variação percentual em uma comparação entre meses?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-09",
+      "question": "Como calcular a receita por categoria de produto?",
+      "expanded_query": "Como calcular a receita por categoria de produto?",
+      "strategy": "original",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-09",
+      "question": "Como calcular a receita por categoria de produto?",
+      "expanded_query": "Como calcular a receita por categoria de produto?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-09",
+      "question": "Como calcular a receita por categoria de produto?",
+      "expanded_query": "Como calcular a receita por categoria de produto?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "ranked_sources": [
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-10",
+      "question": "De onde vêm os dados dos juros básicos da economia brasileira?",
+      "expanded_query": "De onde vêm os dados dos juros básicos da economia brasileira?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "original",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-10",
+      "question": "De onde vêm os dados dos juros básicos da economia brasileira?",
+      "expanded_query": "De onde vêm os dados dos juros básicos da economia brasileira?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "expanded",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-10",
+      "question": "De onde vêm os dados dos juros básicos da economia brasileira?",
+      "expanded_query": "De onde vêm os dados dos juros básicos da economia brasileira?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-11",
+      "question": "Qual é a série do Banco Central usada para consultar a taxa Selic?",
+      "expanded_query": "Qual é a série do Banco Central usada para consultar a taxa Selic?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "original",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md",
+        "01_glossario_kpis.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 0.5
+    },
+    {
+      "question_id": "RAG-11",
+      "question": "Qual é a série do Banco Central usada para consultar a taxa Selic?",
+      "expanded_query": "Qual é a série do Banco Central usada para consultar a taxa Selic?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "expanded",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-11",
+      "question": "Qual é a série do Banco Central usada para consultar a taxa Selic?",
+      "expanded_query": "Qual é a série do Banco Central usada para consultar a taxa Selic?\n\nConceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-12",
+      "question": "Quais limitações devo informar sobre os dados de vendas?",
+      "expanded_query": "Quais limitações devo informar sobre os dados de vendas?",
+      "strategy": "original",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md",
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-12",
+      "question": "Quais limitações devo informar sobre os dados de vendas?",
+      "expanded_query": "Quais limitações devo informar sobre os dados de vendas?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md",
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-12",
+      "question": "Quais limitações devo informar sobre os dados de vendas?",
+      "expanded_query": "Quais limitações devo informar sobre os dados de vendas?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md",
+        "01_glossario_kpis.md",
+        "02_dicionario_dados.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-13",
+      "question": "Os dados comerciais são reais ou sintéticos?",
+      "expanded_query": "Os dados comerciais são reais ou sintéticos?",
+      "strategy": "original",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-13",
+      "question": "Os dados comerciais são reais ou sintéticos?",
+      "expanded_query": "Os dados comerciais são reais ou sintéticos?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-13",
+      "question": "Os dados comerciais são reais ou sintéticos?",
+      "expanded_query": "Os dados comerciais são reais ou sintéticos?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "03_regras_negocio.md",
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.5,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-14",
+      "question": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "expanded_query": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "strategy": "original",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-14",
+      "question": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "expanded_query": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "strategy": "expanded",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    },
+    {
+      "question_id": "RAG-14",
+      "question": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "expanded_query": "O que acontece se a API de dados do Banco Central estiver indisponível?",
+      "strategy": "hybrid",
+      "gold_sources": [
+        "04_fontes_e_limitacoes.md"
+      ],
+      "ranked_sources": [
+        "04_fontes_e_limitacoes.md",
+        "03_regras_negocio.md"
+      ],
+      "precision_at_k": 0.25,
+      "recall_at_k": 1.0,
+      "mrr": 1.0
+    }
+  ]
+}

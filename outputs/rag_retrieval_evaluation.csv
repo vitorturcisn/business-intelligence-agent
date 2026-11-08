@@ -1,0 +1,79 @@
+﻿question_id;question;expanded_query;strategy;gold_sources;ranked_sources;precision_at_k;recall_at_k;mrr
+RAG-01;Como calcular a receita bruta por item antes dos descontos?;Como calcular a receita bruta por item antes dos descontos?;original;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-01;Como calcular a receita bruta por item antes dos descontos?;Como calcular a receita bruta por item antes dos descontos?;expanded;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-01;Como calcular a receita bruta por item antes dos descontos?;Como calcular a receita bruta por item antes dos descontos?;hybrid;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-02;Como descobrir o faturamento após os descontos?;"Como descobrir o faturamento após os descontos?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";original;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;0.6666666666666666;1.0
+RAG-02;Como descobrir o faturamento após os descontos?;"Como descobrir o faturamento após os descontos?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";expanded;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-02;Como descobrir o faturamento após os descontos?;"Como descobrir o faturamento após os descontos?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";hybrid;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-03;Qual é a fórmula da receita líquida para cada item vendido?;"Qual é a fórmula da receita líquida para cada item vendido?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";original;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-03;Qual é a fórmula da receita líquida para cada item vendido?;"Qual é a fórmula da receita líquida para cada item vendido?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";expanded;01_glossario_kpis.md | 02_dicionario_dados.md;02_dicionario_dados.md | 01_glossario_kpis.md;0.5;1.0;1.0
+RAG-03;Qual é a fórmula da receita líquida para cada item vendido?;"Qual é a fórmula da receita líquida para cada item vendido?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";hybrid;01_glossario_kpis.md | 02_dicionario_dados.md;02_dicionario_dados.md | 01_glossario_kpis.md;0.5;1.0;1.0
+RAG-04;Quais campos da tabela sales são necessários para calcular a receita líquida?;"Quais campos da tabela sales são necessários para calcular a receita líquida?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";original;02_dicionario_dados.md;02_dicionario_dados.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-04;Quais campos da tabela sales são necessários para calcular a receita líquida?;"Quais campos da tabela sales são necessários para calcular a receita líquida?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";expanded;02_dicionario_dados.md;02_dicionario_dados.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-04;Quais campos da tabela sales são necessários para calcular a receita líquida?;"Quais campos da tabela sales são necessários para calcular a receita líquida?
+
+Conceitos relacionados: receita líquida receita bruta descontos quantity unit_price discount_pct fórmula";hybrid;02_dicionario_dados.md;02_dicionario_dados.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-05;Qual a diferença entre quantidade de produtos vendida e número de pedidos?;"Qual a diferença entre quantidade de produtos vendida e número de pedidos?
+
+Conceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos";original;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-05;Qual a diferença entre quantidade de produtos vendida e número de pedidos?;"Qual a diferença entre quantidade de produtos vendida e número de pedidos?
+
+Conceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos";expanded;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-05;Qual a diferença entre quantidade de produtos vendida e número de pedidos?;"Qual a diferença entre quantidade de produtos vendida e número de pedidos?
+
+Conceitos relacionados: soma quantity unidades vendidas sale_id distintos número de pedidos";hybrid;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-06;Como contar pedidos sem confundir com as unidades comercializadas?;Como contar pedidos sem confundir com as unidades comercializadas?;original;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-06;Como contar pedidos sem confundir com as unidades comercializadas?;Como contar pedidos sem confundir com as unidades comercializadas?;expanded;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-06;Como contar pedidos sem confundir com as unidades comercializadas?;Como contar pedidos sem confundir com as unidades comercializadas?;hybrid;01_glossario_kpis.md | 02_dicionario_dados.md | 03_regras_negocio.md;02_dicionario_dados.md | 01_glossario_kpis.md | 03_regras_negocio.md;0.75;1.0;1.0
+RAG-07;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;original;01_glossario_kpis.md | 03_regras_negocio.md;03_regras_negocio.md | 01_glossario_kpis.md;0.5;1.0;1.0
+RAG-07;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;expanded;01_glossario_kpis.md | 03_regras_negocio.md;03_regras_negocio.md | 01_glossario_kpis.md;0.5;1.0;1.0
+RAG-07;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;Como comparar o faturamento de setembro de 2026 com agosto de 2026?;hybrid;01_glossario_kpis.md | 03_regras_negocio.md;03_regras_negocio.md | 01_glossario_kpis.md;0.5;1.0;1.0
+RAG-08;O que significa variação percentual em uma comparação entre meses?;O que significa variação percentual em uma comparação entre meses?;original;01_glossario_kpis.md | 03_regras_negocio.md;01_glossario_kpis.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-08;O que significa variação percentual em uma comparação entre meses?;O que significa variação percentual em uma comparação entre meses?;expanded;01_glossario_kpis.md | 03_regras_negocio.md;01_glossario_kpis.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-08;O que significa variação percentual em uma comparação entre meses?;O que significa variação percentual em uma comparação entre meses?;hybrid;01_glossario_kpis.md | 03_regras_negocio.md;01_glossario_kpis.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-09;Como calcular a receita por categoria de produto?;Como calcular a receita por categoria de produto?;original;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-09;Como calcular a receita por categoria de produto?;Como calcular a receita por categoria de produto?;expanded;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-09;Como calcular a receita por categoria de produto?;Como calcular a receita por categoria de produto?;hybrid;01_glossario_kpis.md | 02_dicionario_dados.md;01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-10;De onde vêm os dados dos juros básicos da economia brasileira?;"De onde vêm os dados dos juros básicos da economia brasileira?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";original;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-10;De onde vêm os dados dos juros básicos da economia brasileira?;"De onde vêm os dados dos juros básicos da economia brasileira?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";expanded;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-10;De onde vêm os dados dos juros básicos da economia brasileira?;"De onde vêm os dados dos juros básicos da economia brasileira?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";hybrid;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md | 01_glossario_kpis.md;0.25;1.0;1.0
+RAG-11;Qual é a série do Banco Central usada para consultar a taxa Selic?;"Qual é a série do Banco Central usada para consultar a taxa Selic?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";original;04_fontes_e_limitacoes.md;03_regras_negocio.md | 04_fontes_e_limitacoes.md | 01_glossario_kpis.md;0.25;1.0;0.5
+RAG-11;Qual é a série do Banco Central usada para consultar a taxa Selic?;"Qual é a série do Banco Central usada para consultar a taxa Selic?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";expanded;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.25;1.0;1.0
+RAG-11;Qual é a série do Banco Central usada para consultar a taxa Selic?;"Qual é a série do Banco Central usada para consultar a taxa Selic?
+
+Conceitos relacionados: taxa Selic Banco Central SGS série 432 fonte externa API observações e limitações";hybrid;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.25;1.0;1.0
+RAG-12;Quais limitações devo informar sobre os dados de vendas?;Quais limitações devo informar sobre os dados de vendas?;original;03_regras_negocio.md | 04_fontes_e_limitacoes.md;03_regras_negocio.md | 04_fontes_e_limitacoes.md | 01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-12;Quais limitações devo informar sobre os dados de vendas?;Quais limitações devo informar sobre os dados de vendas?;expanded;03_regras_negocio.md | 04_fontes_e_limitacoes.md;03_regras_negocio.md | 04_fontes_e_limitacoes.md | 01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-12;Quais limitações devo informar sobre os dados de vendas?;Quais limitações devo informar sobre os dados de vendas?;hybrid;03_regras_negocio.md | 04_fontes_e_limitacoes.md;03_regras_negocio.md | 04_fontes_e_limitacoes.md | 01_glossario_kpis.md | 02_dicionario_dados.md;0.5;1.0;1.0
+RAG-13;Os dados comerciais são reais ou sintéticos?;Os dados comerciais são reais ou sintéticos?;original;03_regras_negocio.md | 04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-13;Os dados comerciais são reais ou sintéticos?;Os dados comerciais são reais ou sintéticos?;expanded;03_regras_negocio.md | 04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-13;Os dados comerciais são reais ou sintéticos?;Os dados comerciais são reais ou sintéticos?;hybrid;03_regras_negocio.md | 04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.5;1.0;1.0
+RAG-14;O que acontece se a API de dados do Banco Central estiver indisponível?;O que acontece se a API de dados do Banco Central estiver indisponível?;original;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.25;1.0;1.0
+RAG-14;O que acontece se a API de dados do Banco Central estiver indisponível?;O que acontece se a API de dados do Banco Central estiver indisponível?;expanded;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.25;1.0;1.0
+RAG-14;O que acontece se a API de dados do Banco Central estiver indisponível?;O que acontece se a API de dados do Banco Central estiver indisponível?;hybrid;04_fontes_e_limitacoes.md;04_fontes_e_limitacoes.md | 03_regras_negocio.md;0.25;1.0;1.0
