@@ -122,3 +122,32 @@ def test_search_handles_empty_results():
 
 def test_tool_has_expected_name():
     assert business_knowledge_search.name == "business_knowledge_search"
+
+
+def test_transform_query_expands_brazilian_base_interest_synonyms():
+    query = "De onde vêm os dados dos juros básicos da economia brasileira?"
+    result = transform_query(query)
+
+    assert result != query
+    assert "Banco Central" in result
+    assert "SGS" in result
+    assert "série 432" in result
+
+
+def test_transform_query_expands_faturamento_after_discounts():
+    query = "Como descobrir o faturamento após os descontos?"
+    result = transform_query(query)
+
+    assert result != query
+    assert "receita líquida" in result
+    assert "discount_pct" in result
+
+
+def test_transform_query_expands_sales_after_discounts_synonym():
+    query = "Como calcular as vendas depois dos descontos?"
+    result = transform_query(query)
+
+    assert result != query
+    assert "receita bruta" in result
+    assert "discount_pct" in result
+

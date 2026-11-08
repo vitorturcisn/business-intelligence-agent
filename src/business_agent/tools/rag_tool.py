@@ -27,6 +27,12 @@ def transform_query(query: str) -> str:
         "selic",
         "taxa basica de juros",
         "taxa de juros",
+        "juros basicos",
+        "juros basicos da economia",
+        "juros da economia brasileira",
+        "juro basico",
+        "dados dos juros",
+        "fonte dos juros",
     ]):
         expansions.append(
             "taxa Selic Banco Central SGS série 432 "
@@ -37,6 +43,13 @@ def transform_query(query: str) -> str:
         "receita liquida",
         "faturamento liquido",
         "valor liquido",
+        "faturamento apos descontos",
+        "faturamento apos os descontos",
+        "vendas apos descontos",
+        "vendas apos os descontos",
+        "vendas depois dos descontos",
+        "faturamento depois dos descontos",
+        "valor das vendas depois dos descontos",
     ]):
         expansions.append(
             "receita líquida receita bruta descontos "
