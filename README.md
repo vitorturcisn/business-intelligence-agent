@@ -1,76 +1,110 @@
 # Business Intelligence Agent
 
-Projeto de pós-graduação em agentes de IA, desenvolvido com Python, LangChain e LangGraph. A solução integra consultas SQL, recuperação documental (RAG), API econômica externa, memória conversacional e persistente, verificação factual por Natural Language Inference (NLI), e observabilidade com LangSmith.
+Projeto acadêmico de agentes de IA desenvolvido com Python, LangChain e LangGraph. A solução integra consultas SQL, Text-to-Query, recuperação documental (RAG), API econômica externa, memória conversacional e persistente, verificação factual por Natural Language Inference (NLI) e avaliação/observabilidade com LangSmith.
 
-## Objetivo
+## Objetivo e domínio
 
-Construir um agente de Business Intelligence capaz de responder perguntas sobre vendas e regras de negócio, consultar indicadores econômicos oficiais, manter contexto entre interações e bloquear respostas que não sejam sustentadas pelas evidências disponíveis.
+Construir um agente de Business Intelligence para responder perguntas sobre vendas, regras de negócio e indicadores econômicos. O agente deve selecionar fontes adequadas, executar ferramentas, preservar contexto entre turnos e evitar liberar respostas que não sejam sustentadas pelas evidências disponíveis.
 
-## Arquitetura
+O domínio de demonstração é análise de vendas. A tabela `sales` possui os campos físicos `sale_id`, `sale_date`, `product`, `category`, `region`, `quantity`, `unit_price` e `discount_pct`. As regras documentadas definem:
+
+- Receita bruta por item: `quantity × unit_price`.
+- Desconto por item: `quantity × unit_price × discount_pct`.
+- Receita líquida por item: `quantity × unit_price × (1 - discount_pct)`.
+
+A base SQLite e os documentos da pasta `data/` são artefatos locais de demonstração. A API econômica externa consulta a série SGS 432 do Banco Central do Brasil (meta Selic).
+
+## Arquitetura cognitiva e maturidade
+
+A arquitetura é **híbrida**: combina rotas determinísticas para perguntas conhecidas (identificação de métricas, períodos, SQL mensal e consultas conceituais específicas) com seleção de ferramentas por LLM no `AgentExecutor` para perguntas que exigem interpretação e uso de ferramentas. Em consultas multi-source, o fluxo combina SQL para valores e RAG para conceitos/fórmulas, e encaminha as evidências ao verificador factual.
+
+Em uma classificação qualitativa de maturidade (não um padrão universal), o projeto está no estágio de **protótipo integrado com uso de ferramentas e memória**, acima de uma chain fixa/LLM isolado. Ainda não é um agente autônomo de produção: o planejamento é delimitado por regras e planos estruturados, a avaliação live cobre seis cenários curados e a persistência conversacional de curto prazo permanece em RAM por sessão.
+
+Planejamento de uma solicitação complexa:
+
+1. Normalizar a pergunta e identificar intenção, métrica, período e entidades/dimensões relevantes.
+2. Selecionar uma ou mais fontes (SQLite/SQL, RAG/FAISS, API SGS 432 ou memória persistente).
+3. Para Text-to-Query, solicitar ao modelo um plano JSON restrito; validar métrica, dimensão, ordenação e limite; compilar/executar a consulta parametrizada em modo somente leitura.
+4. Para solicitações multi-source, combinar o valor quantitativo retornado pelo SQL com a definição ou fórmula recuperada pelo RAG.
+5. Selecionar evidências e verificar afirmações, números e coerência antes de liberar a resposta.
+
+O planejamento é decomposto em etapas e fontes, mas não há um planner hierárquico autônomo que crie subagentes ou planos recursivos.
+
+## Arquitetura e fluxo
 
 ```mermaid
 flowchart TD
-    U[Usuário] --> O[Orquestrador]
-    O -->|Métricas e rankings| SQL[SQL / Text-to-Query]
-    O -->|Perguntas conceituais| RAG[RAG + FAISS]
-    O -->|Indicador econômico| BCB[API SGS - Banco Central]
-    O -->|Contexto entre sessões| MEM[Memória SQLite + FAISS]
-    SQL --> DB[(SQLite - vendas)]
-    RAG --> KB[Base documental]
-    BCB --> SGS[Série SGS 432 - Selic]
-    SQL --> V[Verificação factual]
-    RAG --> Q[Qwen3 + AgentExecutor]
-    Q --> V
-    MEM --> Q
-    BCB --> V
-    V --> NLI[NLI + verificações determinísticas]
-    NLI --> RESP[Resposta sustentada ou bloqueada]
+    U[Usuário / CLI] --> O[Orquestrador híbrido]
+    O --> R[Classificação de intenção, métrica e período]
+    R --> SQL[SQL mensal / Text-to-Query]
+    R --> RAG[RAG + FAISS]
+    R --> API[API SGS 432 - BCB]
+    R --> MEM[Memória persistente]
+    SQL --> EV[Seleção de evidências]
+    RAG --> EV
+    API --> EV
+    MEM --> Q[Qwen3 + AgentExecutor]
+    EV --> Q
+    Q --> NLI[NLI + verificações determinísticas]
+    NLI --> OUT[Resposta sustentada ou bloqueada]
     Q -. tracing .-> LS[LangSmith]
 ```
 
-A demonstração integrada `scripts/run_local_openai_tools_agent.py` utiliza Qwen3 local via Ollama, `create_openai_tools_agent` e `AgentExecutor`. O orquestrador aplica rotas determinísticas para consultas mensais, text-to-query, recuperação de memória pessoal e consultas conceituais via RAG. As evidências das ferramentas são encaminhadas ao verificador antes da liberação da resposta.
+A demonstração integrada principal é `scripts/run_local_openai_tools_agent.py`, que utiliza Qwen3 local via Ollama, `create_openai_tools_agent`, `AgentExecutor` e `RunnableWithMessageHistory`. Há rotas especializadas determinísticas antes/de fora do loop padrão do executor; as perguntas que requerem seleção semântica de ferramentas seguem para o LLM e o executor. O projeto também mantém demonstrações didáticas de chains, RouterChain, ReAct e memória.
 
-O repositório também contém demonstrações didáticas de outras estratégias de agentes, chains e memória; nem todas utilizam inferência generativa real.
+## Chains, prompts e saída estruturada
 
-## Componentes
+`src/business_agent/chains/initial_chain.py` implementa `PromptTemplate`, `ChatPromptTemplate`, `PydanticOutputParser` e o modelo Pydantic `RequestAnalysis`. A chain oferece saída estruturada com intenção, métrica, período, necessidade de ferramentas e informações ausentes.
 
-### Chains e processamento
-- `PromptTemplate` / `ChatPromptTemplate`, LCEL e composição de componentes.
-- Execução `invoke`, `batch` e `stream`.
-- Chains sequenciais, paralelas e roteamento.
-- Saída estruturada com Pydantic, few-shot prompting e estrutura PTCF.
+A mesma chain é composta em dois estilos:
 
-### Agentes e ferramentas
-- Agente integrado com `create_openai_tools_agent` e `AgentExecutor`.
-- Qwen3 (`qwen3:1.7b`) local por meio da API compatível com OpenAI do Ollama.
-- Ferramenta SQL para consultas somente leitura à base SQLite de vendas.
-- Text-to-query: o modelo propõe um plano estruturado; o backend valida o catálogo permitido e compila SQL parametrizado e somente leitura.
-- RAG documental com FAISS.
-- Consulta à API SGS do Banco Central do Brasil, série 432 (Selic).
-- Ferramentas de memória pessoal e contextual.
+- **LCEL (declarativo):** `chat_prompt | structured_llm | output_parser`. É o padrão recomendado para transformações lineares e legíveis, com componentes substituíveis.
+- **`@chain` (imperativo):** chama `invoke` em cada componente e permite inserir validações e ramificações Python. Foi mantido para comparação e para fluxos que precisem de controle explícito.
 
-### RAG
+A interface `Runnable` é demonstrada por `invoke`, `batch` e `stream` em `scripts/run_initial_chain.py`. O modo padrão da chain inicial é `mock` (sem chamada externa); `LLM_MODE=openai` habilita a execução com chave configurada.
 
-A base documental fica em `data/knowledge_base/` e contém glossário de KPIs, dicionário de dados, regras de negócio e fontes/limitações. A recuperação usa embeddings multilíngues e FAISS, com expansão determinística de consultas. O índice persistido é reutilizado durante a avaliação de recuperação; a avaliação não reconstrói o índice.
+`src/business_agent/chains/advanced_chains.py` demonstra composição sequencial (`RunnableLambda`), paralela (`RunnableParallel`) e roteamento clássico com `RouterChain`. A classificação/extração nessa etapa é determinística, facilitando teste e rastreabilidade.
 
-### Memória
+## Agentes, orquestração e prompts
 
-- Memória conversacional de curto prazo por sessão, em RAM, com janela configurada de até oito mensagens na demonstração integrada.
-- Memória de longo prazo persistida em SQLite, com categorias semântica, episódica e procedural.
-- Recuperação híbrida lexical e semântica com FAISS e Reciprocal Rank Fusion (RRF).
-- SQLite permanece como fonte de verdade; o índice vetorial é derivado e reconstruível.
+O agente integrador usa `create_openai_tools_agent` e `AgentExecutor`, com o prompt contendo Persona, Task, Context e Format (PTCF), exemplos few-shot e `agent_scratchpad` para mensagens de ações/resultados de ferramentas.
 
-### Verificação factual e guardrails
+A escolha de LangChain é adequada ao caso de uso de um único agente que precisa de abstrações reutilizáveis para modelos, prompts, tools e um loop de chamadas de ferramentas. A comparação de desenho é:
 
-O verificador usa o modelo multilíngue `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`, via Transformers e PyTorch. Ele extrai afirmações, seleciona evidências específicas (incluindo definições de campos e fórmulas), classifica as relações como `APOIA`, `REFUTA` ou `NEUTRA` e executa verificações auxiliares de consistência numérica e coerência. Os vereditos gerais são `SUSTENTADA`, `REFUTADA`, `INCONCLUSIVA` ou `INCOERENTE`.
+| Orquestrador | Ponto forte | Adequação a este projeto |
+|---|---|---|
+| LangChain AgentExecutor | Loop de agente com integração direta a prompts, modelos e tools. | Escolhido para o agente integrador e para demonstrar `create_openai_tools_agent` + `AgentExecutor`. |
+| LangGraph | Workflow em grafo com estado explícito, nós/arestas, persistência/checkpoint e controle de fluxo. | Complementar para fluxos com transições e estado mais elaborados; seria a evolução natural se o processo se tornasse mais longo ou ramificado. |
+| CrewAI | Abstrações de crews/agents com papéis, tarefas e colaboração multiagente; Flows coordenam o processo. | Não escolhido porque o domínio atual é resolvido por um agente de BI que coordena ferramentas, sem necessidade demonstrada de equipe de agentes especializados. |
 
-Na rota conceitual de receita líquida e campos físicos, uma única tentativa de revisão pelo Qwen3 pode ser solicitada quando o primeiro rascunho contém afirmações sem suporte ou contraditas. A resposta revisada é verificada novamente; a revisão não altera o threshold do NLI e não garante aprovação. Os escores NLI não são probabilidades calibradas.
+A comparação é arquitetural, não um benchmark de desempenho entre frameworks. Referências oficiais consultadas estão no final deste README.
 
-## Avaliações e resultados
+**ReAct clássico:** `src/business_agent/agents/legacy_react.py` implementa `initialize_agent` com `AgentType.ZERO_SHOT_REACT_DESCRIPTION`, e `scripts/run_react_demo.py` imprime as etapas intermediárias. Nesta demonstração didática, o modelo é `FakeListLLM` para tornar a trajetória determinística; as ferramentas de SQL e API do Banco Central são reais. Portanto, o ciclo ReAct clássico está no código, mas a decisão de ferramenta dessa demonstração específica não é gerada por um LLM ao vivo. O agente integrador separado utiliza Qwen3 real.
 
-### Recuperação RAG
+**Raciocínio e rastreabilidade:** o projeto usa decomposição da tarefa, `agent_scratchpad`, exemplos few-shot e rastros de chamadas/observações. Não registra nem apresenta cadeia de pensamento privada em texto livre; para depuração, registra resumos de plano, ferramentas e resultados. Assim, o requisito de raciocínio operacional é demonstrado, mas a interpretação literal de chain-of-thought textual explícito é uma limitação deliberada.
 
-O benchmark `docs/AVALIACAO_RAG.md` compara busca original, expandida e híbrida em 14 perguntas, com top-k=4 e avaliação no nível de documento/fonte. Resultados agregados:
+## Ferramentas: determinísticas, semânticas e híbridas
+
+| Tipo | Componentes | Comportamento |
+|---|---|---|
+| Determinísticas / hardcoded | `sales_monthly_summary`, parser/resolvedor de períodos, seleção de métricas, validações e verificações numéricas. | Executam regras e consultas com parâmetros e catálogo controlados; não delegam a criação livre de SQL ao modelo. |
+| Semânticas | `business_knowledge_search`, `search_business_memory` e seleção de ferramentas no AgentExecutor. | Recebem consultas em linguagem natural; o modelo decide quando consultar conhecimento ou memória e fornece a consulta textual. |
+| Híbrida | `text_to_query_sales`. | Qwen3 propõe plano JSON limitado; `parse_query_plan` valida chaves, métricas, dimensões, ordenação e limite; o backend compila/executa a consulta segura. |
+| API externa | `get_selic_target`. | Wrapper tipado consulta a API pública do Banco Central, trata falhas HTTP/JSON e retorna observações, datas, unidade e fonte. |
+
+A API SGS 432 não exige chave de autenticação, mas exige conectividade com a internet. O tracing remoto do LangSmith depende de `LANGSMITH_API_KEY`. O arquivo `.env.example` contém apenas placeholders vazios; nunca versione `.env` nem credenciais reais.
+
+## Text-to-Query e RAG
+
+Text-to-Query não aceita SQL livre produzido pelo modelo. O prompt solicita exatamente `metric`, `dimension`, `sort` e `limit`; o parser valida os valores contra listas permitidas e o backend executa a consulta em modo somente leitura.
+
+O RAG utiliza o índice FAISS persistido em `data/indexes/business_knowledge_faiss`, carregado por `load_faiss_index`. A avaliação documentada reutiliza o índice existente; não reconstrói o pipeline de indexação. A recuperação usa embeddings multilíngues e expansão determinística da consulta.
+
+### Diagnóstico de falha real de recuperação
+
+No caso RAG-02 (“Como descobrir o faturamento após os descontos?”), a busca original recuperou o glossário e o dicionário de dados, mas não retornou as regras de negócio também marcadas como relevantes. A pergunta usava “faturamento após descontos”, enquanto a base formalizava o conceito como “receita líquida”. A expansão acrescentou termos equivalentes (`receita líquida`, `receita bruta`, `descontos`, `quantity`, `unit_price`, `discount_pct`) e recuperou as três fontes esperadas.
+
+Em 14 perguntas (top-k=4), os resultados foram:
 
 | Estratégia | Precision@4 | Recall@4 | MRR |
 |---|---:|---:|---:|
@@ -78,36 +112,102 @@ O benchmark `docs/AVALIACAO_RAG.md` compara busca original, expandida e híbrida
 | Expandida | 0,4821 | 1,0000 | 1,0000 |
 | Híbrida | 0,4821 | 1,0000 | 1,0000 |
 
-O benchmark avalia recuperação de fontes, não a correção das respostas geradas. A amostra e os documentos avaliados são limitados.
+Os ganhos são concentrados em casos de incompatibilidade vocabular. Expandida e híbrida empataram nesse benchmark; as métricas avaliam recuperação documental, não a correção das respostas do LLM.
 
-### Avaliação ao vivo com Qwen3 e LangSmith
+## Memória: curto prazo, longo prazo e CoALA
 
-A avaliação `scripts/evaluate_live_qwen_agent.py` executa seis cenários reais com `qwen3:1.7b` local, Ollama e tracing do LangSmith. Na execução final de 08/11/2026, os seis cenários receberam veredito `SUSTENTADA`: SQL mensal, Text-to-Query, API Selic, memória multi-turn, RAG conceitual e consulta multi-source (SQL + RAG).
+A memória de curto prazo é gerenciada por sessão em RAM. `build_agent_with_session_history` envolve o `AgentExecutor` com `RunnableWithMessageHistory` e mantém uma janela deslizante de até oito mensagens anteriores (aproximadamente quatro turnos). Quando excede o limite, remove mensagens antigas e preserva a janela começando por uma mensagem do usuário. O histórico volátil é perdido ao encerrar o processo. Também há uma factory didática `build_conversation_buffer_memory()` que instancia `ConversationBufferMemory`; o runtime integrador usa `RunnableWithMessageHistory`.
 
-- Dataset: `business-intelligence-agent-qwen3-live-v1`
-- Projeto LangSmith: `business-intelligence-agent`
-- Experimento: `qwen3-live-agent-evaluation-37b531b2`
-- Resultado local: `outputs/qwen3_live_evaluation.json`
-- Relatório detalhado: `docs/AVALIACAO_AGENTE_QWEN3.md`
-- Evidência: `docs/EVIDENCIAS_LANGSMITH.md`
-- Evidências visuais históricas da avaliação mock/determinística (separadas da avaliação live): `docs/EVIDENCIAS_LANGSMITH_MOCK.md` e `docs/ANEXO_EVIDENCIAS_LANGSMITH_MOCK.pdf`.
+A memória de longo prazo é persistida em SQLite e classificada pela taxonomia CoALA:
 
-A avaliação cobre os seis cenários curados; não representa garantia de desempenho para todas as perguntas ou ambientes.
+- **Semântica:** fatos e definições estáveis do negócio.
+- **Episódica:** análises e eventos com período, fonte e contexto.
+- **Procedural:** instruções e procedimentos recorrentes.
 
-## Tecnologias
+`HybridMemoryRetriever` combina busca lexical do SQLite e similaridade vetorial do FAISS, com Reciprocal Rank Fusion (RRF). SQLite permanece como fonte persistente de verdade; FAISS é um índice derivado e reconstruível. Não há sumarização automática do histórico conversacional: o controle de contexto é feito pela janela deslizante e a memória persistente é recuperada sob demanda.
 
-Python 3.12, LangChain, LangGraph, LangSmith, Ollama, Qwen3, SQLite, FAISS, Hugging Face Transformers, Sentence Transformers, PyTorch, Pydantic, Pandas, Requests e Pytest.
+A comparação entre SQLite próprio, LangMem e Mem0 está em `docs/COMPARACAO_FRAMEWORKS_MEMORIA.md`. Não foram executados benchmarks de desempenho entre essas ferramentas.
+
+## Verificação factual, coerência e confiabilidade
+
+`src/business_agent/verification/nli_verifier.py` usa o modelo multilíngue `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` via Transformers/PyTorch. O verificador decompõe respostas em afirmações, seleciona evidências, classifica relações como `APOIA`, `REFUTA` ou `NEUTRA`, e aplica controles determinísticos para correspondência de métricas, valores e coerência. Os vereditos gerais são `SUSTENTADA`, `REFUTADA`, `INCONCLUSIVA` ou `INCOERENTE`.
+
+O projeto implementa `AgentLoggingCallbackHandler` em `observability/callbacks.py`. O handler registra início/fim/erro de chamadas de ferramentas, LLM e chains sem registrar conteúdo sensível. A implementação está disponível, mas não é injetada como callback no runtime CLI principal; o tracing efetivo de execução é feito pelo LangSmith.
+
+## Avaliações e resultados
+
+### Testes automatizados
+
+A última execução informada no ambiente local em 09/11/2026 foi de **182 testes aprovados**, com oito avisos de depreciação/futuro emitidos por dependências e nenhuma falha. Reproduzir com:
+
+```powershell
+pytest -q
+```
+
+### Avaliação live Qwen3 + LangSmith
+
+- Modelo: `qwen3:1.7b` local via Ollama.
+- Dataset: `business-intelligence-agent-qwen3-live-v1`.
+- Projeto: `business-intelligence-agent`.
+- Experimento: `qwen3-live-agent-evaluation-37b531b2`.
+- Cenários: SQL mensal, Text-to-Query, API Selic, memória multi-turn, RAG conceitual e multi-source.
+- Verificação NLI: 6/6 cenários com veredito `SUSTENTADA`.
+
+O script define quatro avaliadores: precisão da trajetória, recall da trajetória, cobertura de termos obrigatórios e veredito de sustentação. Recalculando as métricas a partir do arquivo `outputs/qwen3_live_evaluation.json` com as mesmas definições do script, os seis casos apresentaram **100% de precisão e 100% de recall das chamadas de ferramentas esperadas**. A cobertura média de termos obrigatórios foi **94,4%**: cinco cenários atingiram 100% e o cenário multi-source atingiu 66,7%, pois a resposta não mencionou literalmente o campo `discount_pct`. A métrica é cobertura lexical de termos especificados, não avaliação semântica completa da resposta.
+
+Resultados por cenário e links:
+
+| Cenário | Ferramentas esperadas e observadas | NLI |
+|---|---|---|
+| `monthly_sql` | `sales_monthly_summary` | SUSTENTADA |
+| `text_to_query` | `text_to_query_sales` | SUSTENTADA |
+| `external_api` | `get_selic_target` | SUSTENTADA |
+| `multi_turn_memory` | `sales_monthly_summary` (2 chamadas) | SUSTENTADA |
+| `rag_conceptual` | `business_knowledge_search` | SUSTENTADA |
+| `multi_source` | `sales_monthly_summary` + `business_knowledge_search` | SUSTENTADA |
+
+[ Abrir experimento final no LangSmith ](https://smith.langchain.com/o/647ba4a7-e48d-499d-8d39-36bbf1042aeb/datasets/89d20358-ec83-4d57-91ad-e61482a5111a/compare?selectedSessions=b05e999c-94c3-40d1-bbb1-e626c6eea974)
+
+Arquivos de evidência: `outputs/qwen3_live_evaluation.json`, `docs/AVALIACAO_AGENTE_QWEN3.md` e `docs/EVIDENCIAS_LANGSMITH.md`. As evidências mock/determinísticas estão separadas em `docs/EVIDENCIAS_LANGSMITH_MOCK.md` e `docs/ANEXO_EVIDENCIAS_LANGSMITH_MOCK.pdf`; não substituem a avaliação live.
+
+### Limitações da avaliação
+
+- São seis cenários curados, não uma amostra abrangente de produção.
+- A avaliação multi-turn cobre uma conversa curta de dois turnos; não comprova persistência do histórico após reinicialização.
+- Escores NLI não são probabilidades calibradas e não substituem validação humana.
+- O benchmark RAG tem 14 perguntas e quatro documentos Markdown; os resultados dependem das fontes esperadas definidas manualmente.
+- O caso multi-source não atingiu cobertura lexical completa porque `discount_pct` não foi mencionado na resposta.
+
+## Rastreabilidade da rubrica da disciplina
+
+A leitura documental dos 29 critérios identifica **24 demonstrados, quatro parciais e um não aplicável**. Os quatro parciais são: (1) ReAct clássico, cuja seleção de ações usa FakeListLLM e não acopla memória ao mesmo executor; (2) chain-of-thought textual, substituído por plano resumido e traces auditáveis; (3) callback handler, implementado mas ainda não injetado no runtime CLI principal; e (4) ConversationBufferMemory, disponível como factory didática enquanto o integrador usa RunnableWithMessageHistory. Streamlit é não aplicável porque a atividade permite CLI ou Streamlit.
+
+| Competência | Artefatos / evidência | Observação de aderência |
+|---|---|---|
+| Chain estruturada, templates, parser, Runnable, LCEL e `@chain` | `chains/initial_chain.py`; `scripts/run_initial_chain.py` | Implementados e demonstrados. |
+| Arquitetura, planejamento e maturidade | Este README; `chains/advanced_chains.py`; `scripts/run_local_openai_tools_agent.py` | Arquitetura híbrida e planejamento delimitado documentados; não é planner hierárquico autônomo. |
+| Comparação de orquestradores | Este README; referências oficiais ao final | Comparação arquitetural, não benchmark. |
+| ReAct clássico | `agents/legacy_react.py`; `scripts/run_react_demo.py` | `initialize_agent` e `ZERO_SHOT_REACT_DESCRIPTION`; LLM é `FakeListLLM`, então a escolha de ações é simulada. |
+| PTCF, few-shot e raciocínio | `agents/prompts.py`; `agents/legacy_openai_tools.py` | PTCF/few-shot e scratchpad de ferramentas; não há registro/exposição de CoT detalhado. |
+| Chains sequenciais/paralelas e RouterChain | `chains/advanced_chains.py` | Implementadas com `RunnableLambda`, `RunnableParallel` e `RouterChain`. |
+| API externa, Text-to-Query e RAG existente | `tools/bcb_api_tool.py`; `agents/text_to_query.py`; `retrieval/faiss_store.py`; `tools/rag_tool.py` | API real; plano validado; índice FAISS carregado sem reindexar no benchmark. |
+| Memória CoALA, janela deslizante e memória longa | `memory/short_term.py`; `memory/persistent_memory.py`; `memory/hybrid_retrieval.py`; `memory/long_term.py` | Janela de oito mensagens, SQLite + FAISS/RRF. Factory `ConversationBufferMemory` é didática; o integrador usa `RunnableWithMessageHistory`. |
+| Verificação factual e integração final | `verification/nli_verifier.py`; `agents/legacy_openai_tools.py`; `scripts/run_local_openai_tools_agent.py` | NLI, coerência e executor com ferramentas. |
+| Callbacks | `observability/callbacks.py` | Handler existe, mas não está injetado no runtime CLI principal; LangSmith fornece o tracing efetivo. |
+| Interface | CLI | Streamlit não foi escolhido; a orientação do projeto permite CLI ou Streamlit. |
+| Avaliação LangSmith | `scripts/evaluate_live_qwen_agent.py`; `outputs/qwen3_live_evaluation.json` | Seis cenários, quatro avaliadores e evidência live. |
 
 ## Estrutura
 
 ```text
 business-intelligence-agent/
-├── data/knowledge_base/       # Documentos de negócio
+├── data/knowledge_base/       # Glossário, dicionário, regras e fontes
 ├── data/sample/               # Base SQLite de demonstração
-├── docs/                      # Avaliações e documentação técnica
-├── outputs/                   # Resultados reproduzíveis
+├── data/indexes/              # Índices FAISS persistidos
+├── docs/                      # Relatórios, benchmarks e evidências
+├── outputs/                   # Resultados JSON/CSV reproduzíveis
 ├── scripts/                   # Execução, avaliação e preparação
-├── src/business_agent/        # Agentes, chains, memória, RAG, tools e NLI
+├── src/business_agent/        # Chains, agents, memória, retrieval, tools e NLI
 ├── tests/                     # Testes automatizados
 ├── .env.example
 ├── pyproject.toml
@@ -115,9 +215,9 @@ business-intelligence-agent/
 └── README.md
 ```
 
-## Configuração
+## Configuração e reprodução
 
-Requisitos: Python 3.12, Git, Ollama (para o agente integrado) e conectividade para instalar dependências/baixar modelos.
+Requisitos: Python 3.12, Git, Ollama (agente integrador) e conectividade para instalar dependências/baixar modelos.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -126,104 +226,54 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
 Copy-Item .env.example .env
-```
-
-Para tracing remoto, configure `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT` no `.env`. Nunca versione `.env` ou chaves.
-
-Baixe o modelo local:
-
-```powershell
 ollama pull qwen3:1.7b
 ```
 
-O script integrado utiliza `http://localhost:11434/v1` e a chave local de compatibilidade `ollama`; não requer créditos da API OpenAI.
+Para tracing e avaliação remota, preencher `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY` e `LANGSMITH_PROJECT` no `.env`. Não versionar credenciais. O modelo Qwen3 roda localmente no Ollama em `http://localhost:11434/v1`; a chave `ollama` usada pelo cliente é apenas compatibilidade local e não é uma chave OpenAI.
 
-## Dados e índices
+Base e índice de demonstração já estão no repositório. `python scripts/setup_data.py` recria a base SQLite e pode sobrescrever dados locais; `python scripts/build_faiss_index.py` reconstrói o índice documental. O benchmark RAG usa o índice persistido e não precisa reconstruí-lo.
 
-A base SQLite de demonstração está em `data/sample/sales.db`. Para recriá-la:
-
-```powershell
-python scripts/setup_data.py
-```
-
-Atenção: o comando recria a base de demonstração e pode sobrescrever alterações locais. Para reconstruir o índice vetorial documental:
-
-```powershell
-python scripts/build_faiss_index.py
-```
-
-A avaliação RAG descrita acima reutiliza o índice existente e não precisa executar esse comando.
-
-## Executar as demonstrações
-
-### Agente integrado
+### Agente integrador
 
 ```powershell
 python scripts/run_local_openai_tools_agent.py
 ```
 
-Exemplos:
-
-```text
-Qual foi a receita líquida em setembro de 2026?
-Explique a diferença entre receita bruta e receita líquida.
-Qual é a meta Selic mais recente?
-Compare a receita líquida por categoria em setembro de 2026.
-Mostre as três categorias com maior receita líquida.
-Lembre-se que nosso KPI principal é receita líquida.
-Qual KPI eu mencionei como principal?
-```
-
-### Avaliação real Qwen3 + LangSmith
+### Avaliação live Qwen3 + LangSmith
 
 ```powershell
 python scripts/evaluate_live_qwen_agent.py
 ```
 
-O script executa os seis cenários sequencialmente para limitar o consumo de memória e salva o relatório em `outputs/qwen3_live_evaluation.json`.
-
-### Outras demonstrações
+### Chain inicial
 
 ```powershell
-python scripts/run_initial_chain.py --mode simple
+python scripts/run_initial_chain.py --mode json
+python scripts/run_initial_chain.py --mode imperative
 python scripts/run_initial_chain.py --mode batch
 python scripts/run_initial_chain.py --mode stream
-python scripts/run_agent_mock.py
+```
+
+### ReAct clássico e outras demonstrações
+
+```powershell
 python scripts/run_react_demo.py
-python scripts/run_legacy_openai_tools_demo.py
-python scripts/test_rag_search.py
+python scripts/run_agent_mock.py
 python scripts/run_memory_demo.py
-python scripts/run_persistent_agent_demo.py
 python scripts/run_hybrid_memory_demo.py
 python scripts/run_verifier_demo.py
 python scripts/check_bcb_api.py
 python scripts/check_langsmith.py
-python scripts/run_langsmith_trace.py
-python scripts/evaluate_business_agent.py
+python scripts/evaluate_rag_retrieval.py
 ```
 
-As demonstrações mock/determinísticas exercitam fluxos e contratos sem representar inferência de um LLM real.
+O modo ReAct usa LLM simulado por decisão didática; a API e a ferramenta SQL acionadas no fluxo continuam reais. Testes automatizados usam mocks quando adequado para execução sem credenciais externas.
 
-## Testes automatizados
+## Referências técnicas
 
-Executar a suíte completa:
+1. LangChain Reference - `create_openai_tools_agent`: https://reference.langchain.com/python/langchain-classic/agents/openai_tools/base/create_openai_tools_agent
+2. LangGraph - Overview: https://docs.langchain.com/oss/python/langgraph/overview
+3. CrewAI - Introduction: https://docs.crewai.com/en/introduction
+4. LangChain OSS - Overview: https://www.langchain.com/oss-overview
 
-```powershell
-pytest -q
-```
-
-Última validação registrada em 09/11/2026: **182 testes passaram**, com oito avisos de depreciação/futuro emitidos por dependências. Não houve falhas na suíte.
-
-## Limitações conhecidas
-
-- A avaliação live contém seis cenários curados; não é uma amostra abrangente de interações em produção.
-- O benchmark de recuperação RAG contém 14 perguntas, com fontes esperadas definidas manualmente.
-- Precision/Recall/MRR medem recuperação de fontes, não correção de respostas.
-- Escores NLI não são probabilidades calibradas e não substituem revisão de domínio.
-- O Qwen3 local depende do hardware e da configuração de execução; os resultados são específicos ao modelo/ambiente testados.
-- O histórico conversacional da demonstração integrada fica em RAM e é perdido ao encerrar o processo; a memória de longo prazo é persistida separadamente.
-- Algumas APIs clássicas do LangChain utilizadas em demonstrações didáticas emitem avisos de depreciação; não impediram os testes executados.
-
-## Status da entrega
-
-Na validação mais recente, em 09/11/2026, a suíte automatizada registrou 182 testes aprovados; o benchmark de recuperação RAG apresentou Recall@4 de 1,0000 para as estratégias expandida e híbrida; e a avaliação ao vivo do Qwen3 no LangSmith obteve veredito `SUSTENTADA` nos seis cenários. A demonstração interativa também liberou uma resposta conceitual sobre receita líquida e campos físicos após revisão única e nova verificação NLI. A gravação do vídeo demonstrativo foi realizada em 09/11/2026 e integra os materiais desta entrega acadêmica.
+A comparação dos frameworks é de natureza arquitetural; não foi executado benchmark de latência, custo ou qualidade entre eles.
