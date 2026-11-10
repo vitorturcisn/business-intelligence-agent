@@ -212,7 +212,7 @@ Executar a suíte completa:
 pytest -q
 ```
 
-Última validação registrada em 08/11/2026: **164 testes passaram**, com oito avisos de depreciação/futuro emitidos por dependências. Não houve falhas na suíte.
+Última validação registrada em 09/11/2026: **182 testes passaram**, com oito avisos de depreciação/futuro emitidos por dependências. Não houve falhas na suíte.
 
 ## Limitações conhecidas
 
@@ -226,4 +226,4 @@ pytest -q
 
 ## Status da entrega
 
-Na validação de 08/11/2026, a suíte automatizada registrou 164 testes aprovados; o benchmark de recuperação RAG apresentou Recall@4 de 1,0000 para as estratégias expandida e híbrida; e a avaliação ao vivo do Qwen3 no LangSmith obteve veredito `SUSTENTADA` nos seis cenários. A demonstração interativa também liberou uma resposta conceitual sobre receita líquida e campos físicos após revisão única e nova verificação NLI. A gravação do vídeo demonstrativo está planejada como etapa separada.
+Na validação mais recente, em 09/11/2026, a suíte automatizada registrou 182 testes aprovados; o benchmark de recuperação RAG apresentou Recall@4 de 1,0000 para as estratégias expandida e híbrida; e a avaliação ao vivo do Qwen3 no LangSmith obteve veredito `SUSTENTADA` nos seis cenários. A demonstração interativa também liberou uma resposta conceitual sobre receita líquida e campos físicos após revisão única e nova verificação NLI. A gravação do vídeo demonstrativo foi realizada em 09/11/2026 e integra os materiais desta entrega acadêmica.
