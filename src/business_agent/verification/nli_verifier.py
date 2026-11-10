@@ -809,6 +809,125 @@ def _canonical_formula_hypothesis(claim: str, formula_kind: str) -> str:
     return canonical_hypotheses.get(formula_kind, claim)
 
 
+def _find_exact_field_definition_evidence(
+    claim: str,
+    evidence: list[Evidence],
+) -> Evidence | None:
+    """Find a dictionary line reproduced literally by a single-field claim.
+
+    This deterministic check is deliberately narrower than semantic matching:
+    it accepts only the same field identifier and the same definition text after
+    normalization of case, accents, whitespace, and terminal punctuation.
+    Paraphrases or claims with additional details continue through NLI.
+    """
+    claim_match = _FIELD_DEFINITION_LINE.match(claim.strip())
+    if not claim_match:
+        return None
+
+    claimed_field = claim_match.group(1).casefold()
+    claimed_definition = _normalize_match_text(
+        claim_match.group(2).strip().rstrip(" .;:")
+    )
+
+    for item in evidence:
+        evidence_match = _FIELD_DEFINITION_LINE.match(item.content.strip())
+        if not evidence_match:
+            continue
+
+        evidence_field = evidence_match.group(1).casefold()
+        evidence_definition = _normalize_match_text(
+            evidence_match.group(2).strip().rstrip(" .;:")
+        )
+
+        if (
+            evidence_field == claimed_field
+            and evidence_definition == claimed_definition
+        ):
+            return item
+
+    return None
+
+def _find_gross_formula_label_mismatch(
+    claim: str,
+    evidence: list[Evidence],
+) -> str | None:
+    """Detect a gross-revenue formula incorrectly labelled with a discount.
+
+    The check is intentionally narrow. It requires an explicit gross-revenue
+    formula label, the quantity/unit-price/discount fields, multiplication,
+    and a retrieved dictionary formula defining gross revenue without discount.
+    It does not classify ordinary prose that merely mentions revenue and
+    discounts.
+    """
+    normalized = _normalize_match_text(claim)
+
+    explicit_gross_formula = bool(
+        re.search(
+            r"\b(?:receita\s+bruta|gross\s+revenue)"
+            r"(?:\s+por\s+item)?\s*"
+            r"(?:=|:|e(?:\s+calculad[ao]\s+como)?|calculad[ao]\s+como|"
+            r"corresponde\s+a|equivale\s+a)",
+            normalized,
+        )
+    )
+    has_quantity = bool(
+        re.search(r"\bquantity\b|\bquantidade\b", normalized)
+    )
+    has_unit_price = bool(
+        re.search(r"\bunit\s+price\b|\bpreco\s+unitario\b", normalized)
+    )
+    has_discount = bool(
+        re.search(
+            r"\bdiscount\s+pct\b|\bpercentual\s+de\s+desconto\b|"
+            r"\bdesconto\s*%",
+            normalized,
+        )
+    )
+    has_multiplication = bool(re.search(r"[×*]", claim))
+
+    if not all((
+        explicit_gross_formula,
+        has_quantity,
+        has_unit_price,
+        has_discount,
+        has_multiplication,
+    )):
+        return None
+
+    # Só aplica a regra quando a própria documentação recuperada declara
+    # que a receita bruta por item usa quantidade × preço, sem discount_pct.
+    for item in evidence:
+        lines = item.content.splitlines()
+        for index, raw_line in enumerate(lines):
+            match = _FORMULA_HEADER_LINE.match(raw_line)
+            if not match:
+                continue
+            if _normalize_match_text(match.group(1)) != "receita bruta por item":
+                continue
+
+            equation = match.group(2).strip()
+            if not equation:
+                for candidate in lines[index + 1:]:
+                    candidate = candidate.strip()
+                    if not candidate:
+                        continue
+                    if candidate.startswith("## "):
+                        break
+                    equation = candidate
+                    break
+
+            normalized_equation = _normalize_match_text(equation)
+            documents_gross_formula = (
+                bool(re.search(r"\bquantity\b|\bquantidade\b", normalized_equation))
+                and bool(re.search(r"\bunit\s+price\b|\bpreco\s+unitario\b", normalized_equation))
+                and not bool(re.search(r"\bdiscount\s+pct\b|\bpercentual\s+de\s+desconto\b|\bdesconto\s*%", normalized_equation))
+                and bool(re.search(r"[×*]", equation))
+            )
+            if documents_gross_formula:
+                return item.source
+
+    return None
+
 def _classify_claim(
     claim: str,
     evidence: list[Evidence],
@@ -829,6 +948,28 @@ def _classify_claim(
             verdict="NEUTRA",
             confidence=0.0,
             explanation="Nenhuma evidência foi fornecida.",
+        )
+
+    # Regra determinística de consistência: receita bruta não pode ser rotulada
+    # com uma expressão que já deduz o discount_pct. A regra só dispara quando
+    # o dicionário recuperado confirma a fórmula de receita bruta sem desconto.
+    gross_formula_source = _find_gross_formula_label_mismatch(
+        claim=claim,
+        evidence=evidence,
+    )
+    if gross_formula_source is not None:
+        return ClaimAssessment(
+            claim=claim,
+            verdict="REFUTA",
+            confidence=1.0,
+            evidence_source=gross_formula_source,
+            scores={"formula_label_mismatch": 1.0},
+            explanation=(
+                "A afirmação rotula como receita bruta uma expressão que inclui "
+                "a dedução do desconto. O dicionário define receita bruta por "
+                "item como quantity × unit_price; a dedução do desconto "
+                "corresponde à receita líquida."
+            ),
         )
 
     # Prefer formula-specific evidence whenever the claim expresses a
@@ -856,6 +997,27 @@ def _classify_claim(
         classification_evidence, used_field_definition = (
             _select_field_definition_evidence(claim, evidence)
         )
+
+    # Uma definiÃ§Ã£o do dicionÃ¡rio reproduzida literalmente Ã© evidÃªncia direta.
+    # Essa regra nÃ£o reduz o limiar NLI: parÃ¡frases e afirmaÃ§Ãµes adicionais
+    # continuam dependendo da avaliaÃ§Ã£o semÃ¢ntica normal.
+    if used_field_definition:
+        exact_field_evidence = _find_exact_field_definition_evidence(
+            claim=claim,
+            evidence=classification_evidence,
+        )
+        if exact_field_evidence is not None:
+            return ClaimAssessment(
+                claim=claim,
+                verdict="APOIA",
+                confidence=1.0,
+                evidence_source=exact_field_evidence.source,
+                scores={"exact_match": 1.0},
+                explanation=(
+                    "A afirmaÃ§Ã£o reproduz literalmente a definiÃ§Ã£o especÃ­fica "
+                    "do campo no dicionÃ¡rio de dados."
+                ),
+            )
 
     supported: list[tuple[str, dict[str, float]]] = []
     contradicted: list[tuple[str, dict[str, float], float]] = []

@@ -201,7 +201,7 @@ def extract_month_from_text(
     normalized = normalize_text(text)
 
     numeric_patterns = (
-        r"\b(20\d{2})-(0?[1-9]|1[0-2])\b",
+        r"\b(20\d{2})-(0?[1-9]|1[0-2])\b(?!-\d{2}(?:\b|$))",
         r"\b(0?[1-9]|1[0-2])[-/](20\d{2})\b",
     )
 
@@ -235,16 +235,50 @@ def extract_month_from_text(
     return None
 
 
+_PERIOD_REFERENCE_MARKERS = (
+    "desse mesmo periodo",
+    "nesse mesmo periodo",
+    "deste mesmo periodo",
+    "no mesmo periodo",
+    "do mesmo periodo",
+    "desse periodo",
+    "nesse periodo",
+    "neste periodo",
+    "no periodo anterior",
+    "desse mesmo mes",
+    "nesse mesmo mes",
+    "neste mesmo mes",
+    "no mesmo mes",
+    "desse mes",
+    "nesse mes",
+    "neste mes",
+    "do mes anterior",
+    "periodo mencionado",
+    "mes mencionado",
+)
+
+
 def resolve_month(
     question: str,
     chat_history: list[Any],
 ) -> str | None:
-    """Resolve o mês atual ou herda o último mês mencionado na sessão."""
+    """Resolve um mês explícito ou herda-o apenas em perguntas de continuidade."""
 
     explicit_month = extract_month_from_text(question)
 
     if explicit_month:
         return explicit_month
+
+    normalized_question = normalize_text(question)
+    refers_to_previous_period = any(
+        marker in normalized_question
+        for marker in _PERIOD_REFERENCE_MARKERS
+    )
+
+    # Não associe uma pergunta conceitual independente a um mês antigo da sessão.
+    # O histórico só fornece período quando a própria pergunta indica continuidade.
+    if not refers_to_previous_period:
+        return None
 
     for message in reversed(chat_history or []):
         content = getattr(
@@ -267,6 +301,10 @@ def resolve_month(
 
         if inherited_month:
             return inherited_month
+
+        # Não atravesse uma pergunta anterior independente para buscar um mês antigo.
+        if getattr(message, "type", None) == "human":
+            break
 
     return None
 
@@ -330,6 +368,18 @@ RAG_INTENT_MARKERS = (
     "quais colunas",
     "dicionario de dados",
     "regra de negocio",
+    "correto",
+    "correta",
+    "certo",
+    "certa",
+    "confere",
+    "faz sentido",
+    "verdadeiro",
+    "verdadeira",
+    "falso",
+    "falsa",
+    "incorreto",
+    "incorreta",
 )
 
 RAG_BUSINESS_TERMS = (
@@ -349,20 +399,28 @@ RAG_BUSINESS_TERMS = (
 
 
 def is_conceptual_rag_query(question: str) -> bool:
-    """Identify conceptual business questions that require knowledge-base evidence."""
+    """Identify conceptual, formula-validation and business-rule questions for RAG."""
     normalized = normalize_text(question)
 
     has_conceptual_intent = any(
         marker in normalized
         for marker in RAG_INTENT_MARKERS
     )
+    has_explicit_formula_expression = (
+        bool(re.search(r"[Ã—*=]", question))
+        and bool(
+            re.search(
+                r"(?<!\w)(?:quantity|unit_price|discount_pct)(?!\w)",
+                normalized,
+            )
+        )
+    )
     has_business_topic = any(
         term in normalized
         for term in RAG_BUSINESS_TERMS
     )
 
-    return has_conceptual_intent and has_business_topic
-
+    return (has_conceptual_intent or has_explicit_formula_expression) and has_business_topic
 
 def format_brl(value: Any) -> str:
     """Formata um valor como moeda brasileira."""
@@ -823,20 +881,28 @@ def main() -> None:
                 "não foram solicitados. "
                 "Não repita a consulta RAG. Se a documentação não sustentar "
                 "algum detalhe, informe essa limitação. "
-                "Responda em português brasileiro, de forma breve e direta."
+                "Responda em português brasileiro, de forma breve e direta. "
+                "Use estes rótulos sem inversão: receita bruta por item = quantity × unit_price; "
+                "valor do desconto por item = quantity × unit_price × discount_pct; "
+                "receita líquida por item = quantity × unit_price × (1 - discount_pct). "
+                "Uma expressão de receita bruta menos desconto deve ser rotulada como receita líquida, "
+                "nunca como receita bruta."
             )
 
-            # Regras complementares: priorizam o texto efetivamente recuperado pelo RAG.
+            # Instruções adicionais: priorizam cópia literal das definições recuperadas.
             agent_question += (
-                "\n\n[REGRAS PRIORITARIAS DE RESPOSTA CONCEITUAL]\n"
-                "Ao descrever campos fisicos, use o identificador e a definicao conforme aparecem literalmente no dicionario recuperado. "
-                "Para unit_price, respeite a definiÃ§Ã£o documental: 'preÃ§o unitÃ¡rio do produto'. "
-                "Para quantity, respeite a definiÃ§Ã£o documental: 'quantidade de unidades vendidas'. "
-                "Para discount_pct, respeite a definiÃ§Ã£o documental: 'percentual de desconto aplicado Ã  venda'. "
-                "NÃ£o altere o significado nem acrescente qualificaÃ§Ãµes que nÃ£o estejam na evidÃªncia. "
-                "Apresente cada fÃ³rmula solicitada uma Ãºnica vez. "
-                "NÃ£o inclua notas, observaÃ§Ãµes, exemplos ou fÃ³rmulas adicionais que o usuÃ¡rio nÃ£o solicitou. "
-                "Mantenha a resposta curta, organizada e limitada aos pontos perguntados."
+                "\n\n[REGRAS PRIORITÁRIAS DE RESPOSTA CONCEITUAL]\n"
+                "Quando a pergunta solicitar os campos físicos, apresente cada campo em uma linha e copie exatamente a definição do dicionário de dados. "
+                "Use estas definições, sem acrescentar sinônimos, paráfrases, explicações entre parênteses ou qualificações: "
+                "quantity: quantidade de unidades vendidas; "
+                "unit_price: preço unitário do produto; "
+                "discount_pct: percentual de desconto aplicado à venda. "
+                "Não confunda a definição do campo quantity com a agregação da coluna quantity ao longo de um período. "
+                "Explique a regra de aplicação do desconto em uma afirmação separada, apoiada pelo documento de regras de negócio. "
+                "Apresente cada fórmula solicitada uma única vez e exatamente conforme o dicionário recuperado. "
+                "Não inclua notas, exemplos ou fórmulas adicionais que o usuário não solicitou. "
+                "Se algum detalhe não estiver nas evidências, informe que não foi possível confirmá-lo. "
+                "Mantenha a resposta curta, organizada e em português brasileiro."
             )
             result = executor.invoke(
                 {
@@ -856,10 +922,22 @@ def main() -> None:
 
                         # NLI-GUIDED SELF-REVISION: one controlled retry for unsupported or contradicted RAG claims.
             normalized_question = normalize_text(question)
+            has_formula_or_rule_intent = any(
+                term in normalized_question
+                for term in ("calcul", "formula", "regra")
+            )
+            has_field_intent = any(
+                term in normalized_question
+                for term in ("campo", "coluna")
+            )
+            has_sales_discount_context = any(
+                term in normalized_question
+                for term in ("receita", "venda", "vendas", "desconto")
+            )
             is_revenue_formula_fields_question = (
-                "receita liquida" in normalized_question
-                and any(term in normalized_question for term in ("campo", "coluna"))
-                and any(term in normalized_question for term in ("calcul", "formula"))
+                has_formula_or_rule_intent
+                and has_field_intent
+                and has_sales_discount_context
             )
 
             if is_revenue_formula_fields_question:

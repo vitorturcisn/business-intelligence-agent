@@ -23,6 +23,8 @@ SALES_MARKERS = (
 CONCEPTUAL_MARKERS = (
     "o que e", "explique", "explicar", "diferenca entre",
     "como calcular", "formula", "definicao", "defina",
+    "correto", "correta", "certo", "certa", "confere", "faz sentido",
+    "verdadeiro", "verdadeira", "falso", "falsa", "incorreto", "incorreta",
 )
 
 ALLOWED_METRICS = {
@@ -53,6 +55,15 @@ def _normalize(value: str) -> str:
     return re.sub(r"\s+", " ", without_accents).strip()
 
 
+def _has_explicit_formula_expression(question: str) -> bool:
+    """Recognize explicit equations over physical sales fields."""
+    normalized = _normalize(question)
+    has_sales_field = bool(
+        re.search(r"(?<!\w)(?:quantity|unit[_ ]price|discount[_ ]pct)(?!\w)", normalized)
+    )
+    has_operator = bool(re.search(r"[Ã—*=]", question))
+    return has_sales_field and has_operator
+
 def is_dimensional_sales_query(question: str) -> bool:
     """Identifica perguntas analíticas que agrupam vendas por dimensão."""
     if not isinstance(question, str) or not question.strip():
@@ -60,6 +71,9 @@ def is_dimensional_sales_query(question: str) -> bool:
 
     normalized = _normalize(question)
     if any(marker in normalized for marker in CONCEPTUAL_MARKERS):
+        return False
+
+    if _has_explicit_formula_expression(question):
         return False
 
     has_dimension = any(
