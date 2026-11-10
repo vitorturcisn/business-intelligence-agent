@@ -178,25 +178,6 @@ Arquivos de evidência: `outputs/qwen3_live_evaluation.json`, `docs/AVALIACAO_AG
 - O benchmark RAG tem 14 perguntas e quatro documentos Markdown; os resultados dependem das fontes esperadas definidas manualmente.
 - O caso multi-source não atingiu cobertura lexical completa porque `discount_pct` não foi mencionado na resposta.
 
-## Rastreabilidade da rubrica da disciplina
-
-A leitura documental dos 29 critérios identifica **24 demonstrados, quatro parciais e um não aplicável**. Os quatro parciais são: (1) ReAct clássico, cuja seleção de ações usa FakeListLLM e não acopla memória ao mesmo executor; (2) chain-of-thought textual, substituído por plano resumido e traces auditáveis; (3) callback handler, implementado mas ainda não injetado no runtime CLI principal; e (4) ConversationBufferMemory, disponível como factory didática enquanto o integrador usa RunnableWithMessageHistory. Streamlit é não aplicável porque a atividade permite CLI ou Streamlit.
-
-| Competência | Artefatos / evidência | Observação de aderência |
-|---|---|---|
-| Chain estruturada, templates, parser, Runnable, LCEL e `@chain` | `chains/initial_chain.py`; `scripts/run_initial_chain.py` | Implementados e demonstrados. |
-| Arquitetura, planejamento e maturidade | Este README; `chains/advanced_chains.py`; `scripts/run_local_openai_tools_agent.py` | Arquitetura híbrida e planejamento delimitado documentados; não é planner hierárquico autônomo. |
-| Comparação de orquestradores | Este README; referências oficiais ao final | Comparação arquitetural, não benchmark. |
-| ReAct clássico | `agents/legacy_react.py`; `scripts/run_react_demo.py` | `initialize_agent` e `ZERO_SHOT_REACT_DESCRIPTION`; LLM é `FakeListLLM`, então a escolha de ações é simulada. |
-| PTCF, few-shot e raciocínio | `agents/prompts.py`; `agents/legacy_openai_tools.py` | PTCF/few-shot e scratchpad de ferramentas; não há registro/exposição de CoT detalhado. |
-| Chains sequenciais/paralelas e RouterChain | `chains/advanced_chains.py` | Implementadas com `RunnableLambda`, `RunnableParallel` e `RouterChain`. |
-| API externa, Text-to-Query e RAG existente | `tools/bcb_api_tool.py`; `agents/text_to_query.py`; `retrieval/faiss_store.py`; `tools/rag_tool.py` | API real; plano validado; índice FAISS carregado sem reindexar no benchmark. |
-| Memória CoALA, janela deslizante e memória longa | `memory/short_term.py`; `memory/persistent_memory.py`; `memory/hybrid_retrieval.py`; `memory/long_term.py` | Janela de oito mensagens, SQLite + FAISS/RRF. Factory `ConversationBufferMemory` é didática; o integrador usa `RunnableWithMessageHistory`. |
-| Verificação factual e integração final | `verification/nli_verifier.py`; `agents/legacy_openai_tools.py`; `scripts/run_local_openai_tools_agent.py` | NLI, coerência e executor com ferramentas. |
-| Callbacks | `observability/callbacks.py` | Handler existe, mas não está injetado no runtime CLI principal; LangSmith fornece o tracing efetivo. |
-| Interface | CLI | Streamlit não foi escolhido; a orientação do projeto permite CLI ou Streamlit. |
-| Avaliação LangSmith | `scripts/evaluate_live_qwen_agent.py`; `outputs/qwen3_live_evaluation.json` | Seis cenários, quatro avaliadores e evidência live. |
-
 ## Estrutura
 
 ```text
